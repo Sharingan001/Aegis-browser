@@ -30,6 +30,150 @@
         "test": "tests/axes/test_surface_levels.py"
       },
       "user_cost": "Third-party cross-site cookies partitioned (dFPI)"
+    },
+    {
+      "id": "net.https_only",
+      "mechanism": "autoconfig",
+      "set": {
+        "dom.security.https_only_mode": false
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "Standard HTTP fallback allowed with prompt"
+    },
+    {
+      "id": "media.autoplay",
+      "mechanism": "autoconfig",
+      "set": {
+        "media.autoplay.default": 0
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "Muted and standard media autoplay allowed"
+    },
+    {
+      "id": "webrtc.ice_proxy",
+      "mechanism": "autoconfig",
+      "set": {
+        "media.peerconnection.ice.default_address_only": false
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "WebRTC can query local network interfaces"
+    },
+    {
+      "id": "js.jit",
+      "mechanism": "autoconfig",
+      "set": {
+        "javascript.options.baselinejit": true,
+        "javascript.options.ion": true
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "JIT compilers enabled"
+    },
+    {
+      "id": "js.wasm",
+      "mechanism": "autoconfig",
+      "set": {
+        "javascript.options.wasm": true
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "WebAssembly applications enabled"
+    },
+    {
+      "id": "gfx.webgl",
+      "mechanism": "autoconfig",
+      "set": {
+        "webgl.disabled": false
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "WebGL 3D graphics enabled"
+    },
+    {
+      "id": "doc.mathml",
+      "mechanism": "autoconfig",
+      "set": {
+        "mathml.disabled": false
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "MathML rendering enabled"
+    },
+    {
+      "id": "gfx.font_svg",
+      "mechanism": "autoconfig",
+      "set": {
+        "gfx.font_rendering.opentype_svg.enabled": true
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "OpenType-SVG color fonts enabled"
+    },
+    {
+      "id": "gfx.downloadable_fonts",
+      "mechanism": "autoconfig",
+      "set": {
+        "gfx.downloadable_fonts.enabled": true
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "Downloadable web fonts allowed"
+    },
+    {
+      "id": "js.enabled",
+      "mechanism": "autoconfig",
+      "set": {
+        "javascript.enabled": true
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "JavaScript enabled"
+    },
+    {
+      "id": "webrtc.enabled",
+      "mechanism": "autoconfig",
+      "set": {
+        "media.peerconnection.enabled": true
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "WebRTC enabled"
     }
   ],
   "compat_notes": [

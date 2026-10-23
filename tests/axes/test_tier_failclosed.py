@@ -59,6 +59,8 @@ class TestTierFailClosed(unittest.TestCase):
         if profile_tier:
             with open(os.path.join(prof_dir, "aegis-surface-tier.txt"), "w") as f:
                 f.write(profile_tier)
+            with open(os.path.join(prof_dir, "user.js"), "w") as f:
+                f.write(f'user_pref("aegis.profile.tier", "{profile_tier}");\n')
 
         env = dict(os.environ)
         if env_tier is not None:

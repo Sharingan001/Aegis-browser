@@ -12,6 +12,8 @@
         "dom.security.https_only_mode": true
       },
       "locked": true,
+      "override_of": "S1",
+      "override_reason": "Enforce HTTPS-only mode; prompt before any plain HTTP load",
       "verify": {
         "type": "runtime-check",
         "test": "tests/axes/test_surface_levels.py"
@@ -25,6 +27,8 @@
         "media.autoplay.default": 1
       },
       "locked": true,
+      "override_of": "S1",
+      "override_reason": "Block audible media from autoplaying",
       "verify": {
         "type": "runtime-check",
         "test": "tests/axes/test_surface_levels.py"
@@ -38,6 +42,8 @@
         "media.peerconnection.ice.default_address_only": true
       },
       "locked": true,
+      "override_of": "S1",
+      "override_reason": "Restrict WebRTC from querying secondary local network interfaces",
       "verify": {
         "type": "runtime-check",
         "test": "tests/axes/test_surface_levels.py"

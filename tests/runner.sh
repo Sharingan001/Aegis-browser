@@ -129,8 +129,8 @@ fi
 
 echo ""
 
-# -- 6. Autoconfig ASCII check -----------------------------------------------
-echo "--- [6] Autoconfig ASCII check ---"
+# -- 6. Autoconfig ASCII and Drift check ---------------------------------------
+echo "--- [6] Autoconfig ASCII and Drift check ---"
 AUTOCONFIG_JS="$REPO_ROOT/config/autoconfig/autoconfig.js"
 AEGIS_CFG="$REPO_ROOT/config/autoconfig/aegis.cfg"
 ASCII_OK=1
@@ -151,7 +151,14 @@ done
 
 if [ "$ASCII_OK" -eq 1 ]; then
     echo "PASS: autoconfig.js and aegis.cfg are strictly ASCII"
-    PASS=$((PASS + 1))
+    if python3 "$REPO_ROOT/tools/generate_autoconfig.py" --check; then
+        echo "PASS: config/autoconfig/aegis.cfg strictly matches config/axes/surface/*.json (no drift)"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: config/autoconfig/aegis.cfg has drifted from config/axes/surface/*.json"
+        ERRORS+=("Autoconfig drift detected")
+        FAIL=$((FAIL + 1))
+    fi
 else
     FAIL=$((FAIL + 1))
 fi

@@ -12,6 +12,8 @@
         "javascript.enabled": false
       },
       "locked": true,
+      "override_of": "S1",
+      "override_reason": "Disable client-side JavaScript execution entirely",
       "verify": {
         "type": "runtime-check",
         "test": "tests/axes/test_surface_levels.py"
@@ -25,6 +27,8 @@
         "gfx.downloadable_fonts.enabled": false
       },
       "locked": true,
+      "override_of": "S1",
+      "override_reason": "Disable remote web font downloads",
       "verify": {
         "type": "runtime-check",
         "test": "tests/axes/test_surface_levels.py"
@@ -38,6 +42,8 @@
         "media.peerconnection.enabled": false
       },
       "locked": true,
+      "override_of": "S1",
+      "override_reason": "Completely disable WebRTC subsystem",
       "verify": {
         "type": "runtime-check",
         "test": "tests/axes/test_surface_levels.py"

@@ -6,6 +6,21 @@
   "extends": "S2",
   "controls": [
     {
+      "id": "media.autoplay",
+      "mechanism": "autoconfig",
+      "set": {
+        "media.autoplay.default": 5
+      },
+      "locked": true,
+      "override_of": "S2",
+      "override_reason": "Escalate autoplay block from audible-only (1) to all media (5)",
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "All media autoplay blocked"
+    },
+    {
       "id": "js.jit",
       "mechanism": "autoconfig",
       "set": {
@@ -13,6 +28,8 @@
         "javascript.options.ion": false
       },
       "locked": true,
+      "override_of": "S1",
+      "override_reason": "Disable baseline JIT and IonMonkey compilers; force interpreter execution",
       "verify": {
         "type": "runtime-check",
         "test": "tests/axes/test_surface_levels.py"
@@ -26,6 +43,8 @@
         "javascript.options.wasm": false
       },
       "locked": true,
+      "override_of": "S1",
+      "override_reason": "Disable WebAssembly runtime",
       "verify": {
         "type": "runtime-check",
         "test": "tests/axes/test_surface_levels.py"
@@ -39,6 +58,8 @@
         "webgl.disabled": true
       },
       "locked": true,
+      "override_of": "S1",
+      "override_reason": "Disable WebGL 3D canvas contexts",
       "verify": {
         "type": "runtime-check",
         "test": "tests/axes/test_surface_levels.py"
@@ -52,6 +73,8 @@
         "mathml.disabled": true
       },
       "locked": true,
+      "override_of": "S1",
+      "override_reason": "Disable MathML rendering engine",
       "verify": {
         "type": "runtime-check",
         "test": "tests/axes/test_surface_levels.py"
@@ -65,6 +88,8 @@
         "gfx.font_rendering.opentype_svg.enabled": false
       },
       "locked": true,
+      "override_of": "S1",
+      "override_reason": "Disable OpenType-SVG font rendering engine",
       "verify": {
         "type": "runtime-check",
         "test": "tests/axes/test_surface_levels.py"

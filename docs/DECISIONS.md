@@ -187,3 +187,15 @@ initiate source compilation at this time. Prior to any future source compilation
 invalid mozconfig flags on a constrained-disk system (~86 GB free).
 
 **Spec reference:** Part 16, Part 18 (Phase 1b).
+---
+
+## D-011 — 2026-10-23 — Phase 2a Surface Architecture, Single Source of Truth Generator, and Memory Lower Bound
+
+**Decision:**
+1. **Separation of Policy Scope:** Enterprise policy (`config/policy/policies.json`) is strictly restricted to tier-independent controls (`DisableTelemetry`, `DisableFirefoxStudies`, `DisablePocket`, `EnableTrackingProtection`). Tier-specific surface controls (`webgl.disabled`, `dom.security.https_only_mode`, etc.) must never be placed in `policies.json` because enterprise policies apply unconditionally across all instances and profiles, overriding autoconfig.
+2. **Single Source of Truth (`tools/generate_autoconfig.py`):** `config/axes/surface/s*.json` is the sole source of truth for surface levels. `tools/generate_autoconfig.py` validates strict cumulativity across tiers (S4 >= S3 >= S2 >= S1 with documented overrides), generates ASCII-only `config/autoconfig/aegis.cfg`, and provides a `--check` flag enforced by CI to prevent configuration drift.
+3. **Autoconfig Sandbox Integrity:** `general.config.sandbox_enabled: true` is strictly enforced. In the ESR 153 autoconfig sandbox, XPCOM (`Components` and `Services`) is isolated/undefined. Tier selection is performed safely using native sandbox primitives: `getenv("AEGIS_SURFACE_TIER")` (orchestrator environment) and `getPref("aegis.profile.tier")` (profile `user.js`). Any unset, invalid, or mismatched tier selection fails closed to S4.
+4. **Empirical Memory Baseline:** The multi-process Firefox ESR 153 instance consumes ~596 MB RSS under 3 local pages (`/benign`, `/phishing-mock`, `/axes`). This figure is explicitly labeled as an empirical **lower bound** for light local pages, not an upper bound for heavy production web workloads.
+
+**Spec references:** Parts 5.1, 5.2, 7.1, 14.
+

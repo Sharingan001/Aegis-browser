@@ -1,22 +1,13 @@
 {
   "policies": {
     "DisableTelemetry": true,
-    "HttpsOnlyMode": "force_enabled",
+    "DisableFirefoxStudies": true,
+    "DisablePocket": true,
     "EnableTrackingProtection": {
       "Value": true,
       "Locked": true,
       "Fingerprinting": true,
       "Cryptomining": true
-    },
-    "DNSOverHTTPS": {
-      "Enabled": true,
-      "Locked": true
-    },
-    "Preferences": {
-      "webgl.disabled": {
-        "Value": true,
-        "Status": "locked"
-      }
     }
   }
 }

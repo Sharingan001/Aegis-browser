@@ -60,14 +60,14 @@ flowchart TD
    - Uncontrolled environment variables are stripped.
    - Strictly controlled parameters are injected:
      - `AEGIS_SURFACE_TIER=<S1|S2|S3|S4>`
-     - `AEGIS_IPC_SOCKET=/run/user/<UID>/aegis/ipc.sock`
-     - `AEGIS_AUTH_TOKEN=<random-256bit-hex>`
-3. **Dedicated Profile Paths:**
+3. **IPC Connection Passing:**
+   - Communication is passed directly via an inherited file descriptor from a connected `socketpair` (`AF_UNIX`, `SOCK_STREAM`), avoiding filesystem sockets and environment-variable tokens.
+4. **Dedicated Profile Paths:**
    - Standard: `~/.local/share/aegis/profiles/standard`
    - Strict: `~/.local/share/aegis/profiles/strict`
    - Research/Tor: `~/.local/share/aegis/profiles/research`
    - Detonation: `/dev/shm/aegis/detonation_<uuid>` (RAM-backed, deleted on process exit)
-4. **Lifecycle Control & Fail-Closed Termination:**
+5. **Lifecycle Control & Fail-Closed Termination:**
    - When an instance terminates unexpectedly or crashes, the orchestrator detects the exit code via `SIGCHLD`.
    - If a crash occurs in a Tor tier (N2/N3), the orchestrator immediately closes dependent routes to prevent silent fallbacks.
    - Clean shutdown dispatches `SIGTERM`, waits a 4-second grace period for sqlite storage commits, then issues `SIGKILL`.
@@ -76,22 +76,17 @@ flowchart TD
 
 ## 4. Local Inter-Process Communication (IPC)
 
-### 4.1 Transport & Permissions
-* **Mechanism:** Unix Domain Sockets (`AF_UNIX`, `SOCK_STREAM`).
-* **Path:** `/run/user/$UID/aegis/ipc.sock` (utilizes Linux `tmpfs` XDG_RUNTIME_DIR).
-* **Permissions:** Directory mode `0700`, socket mode `0600`. Only the operating system user running Aegis can open or connect to the socket.
+### 4.1 Transport via Inherited Socketpair
+* **Mechanism:** Connected Unix Domain Socketpair (`socketpair(AF_UNIX, SOCK_STREAM, 0)`).
+* **Inherited File Descriptor:** Before `exec`, the orchestrator creates the socketpair, retains the parent endpoint, marks the child endpoint non-close-on-exec, and duplicates it to a fixed descriptor (e.g. FD 3, passed via `--aegis-ipc-fd=3`). The orchestrator closes the child descriptor in its own process.
+* **Security Advantages:**
+  - **Zero Filesystem Exposure:** No socket node is created in `/run/user/` or `/tmp/`, completely eliminating filesystem race conditions, unauthorized socket connects from same-UID processes, and symlink attacks.
+  - **No Shared Token in Environment:** No authentication secret or token needs to be stored in environment variables (which could otherwise be visible in `/proc/<pid>/environ` to other processes running as the same UID).
+  - **Kernel-Guaranteed Peer Identity:** The kernel guarantees that the other end of the socketpair is uniquely and exclusively connected to the spawned child process.
 
-### 4.2 Authentication & Verification Handshake
-To prevent unauthorized processes running under the same UID (e.g. arbitrary user scripts) from spoofing orchestrator messages:
-1. **Kernel Credential Verification (`SO_PEERCRED`):** The orchestrator queries `SO_PEERCRED` upon connection to verify that the peer PID, UID, and GID strictly match the expected user.
-2. **Cryptographic Token Handshake:**
-   - Upon spawning an instance, the orchestrator generates an ephemeral 32-byte secret $K_{\text{inst}}$.
-   - Immediately upon connecting, the instance must transmit a JSON handshake:
-     ```json
-     { "action": "AUTH", "instance_id": "tier-s3", "token": "7f8b9..." }
-     ```
-   - If the token does not match $K_{\text{inst}}$, the orchestrator immediately closes the connection and records a security tripwire.
-3. **Wire Protocol Framing:** Length-prefixed JSON (4-byte big-endian payload length followed by UTF-8 JSON payload).
+### 4.2 Protocol Framing
+* **Wire Protocol Framing:** Length-prefixed JSON (4-byte big-endian payload length followed by UTF-8 JSON payload).
+* **Heartbeat & Liveness:** Bidirectional ping/pong every 15 seconds. If an instance fails to respond within 30 seconds, it is flagged as unresponsive and restarted fail-closed.
 
 ---
 
@@ -110,36 +105,49 @@ sequenceDiagram
     Standard_Inst->>Standard_Inst: Link Guard pauses navigation; renders Interstitial Warning
     User->>Standard_Inst: User selects "Inspect in Detonation Cell"
     Standard_Inst->>Orchestrator: IPC: HANDOFF_URL { url, target_tier: "S4", reason: "credential_lure" }
-    Orchestrator->>Orchestrator: Validate URL scheme (block file://, about:); Record in Ledger
+    Orchestrator->>Orchestrator: Validate URL scheme; Record domain in Ledger
     alt Detonation Instance Running?
         Orchestrator->>Detonation_Inst: IPC: OPEN_TAB { url, mode: "detonation" }
     else Not Running
-        Orchestrator->>Detonation_Inst: Spawn Process (AEGIS_SURFACE_TIER=S4) + Pass URL
+        Orchestrator->>Detonation_Inst: Spawn Process (AEGIS_SURFACE_TIER=S4) + Pass FD & URL
     end
     Detonation_Inst->>User: Renders static page (JS disabled, JIT off) in Detonation window
     Standard_Inst->>User: Closes original tab / displays hand-off receipt
 ```
 
-### 5.1 URL Sanitization Rules
-* Only `http://`, `https://`, and `onion://` schemes are eligible for hand-off.
+### 5.1 URL Sanitization & Scheme Rules
+* Only standard `http://` and `https://` schemes are eligible for hand-off.
+* `.onion` addresses use standard `http://` or `https://` schemes and are routed exclusively via the Tor SOCKS proxy in the Research/Tor tier (N2/N3). The pseudo-scheme `onion://` is not permitted.
 * `file://`, `about:`, `chrome://`, `resource://`, and `javascript:` URLs are **strictly rejected**.
-* Tracking parameters (`utm_*`, `fbclid`) are stripped by Link Cleaner before hand-off.
+* Tracking parameters (`utm_*`, `fbclid`, etc.) are stripped by Link Cleaner before hand-off.
+
+### 5.2 Privacy-Preserving Hand-Off Logging
+* **Domain-Only by Default:** The Flight Recorder records only the registrable domain (`registrable_domain`), target tier, escalation rule, and timestamp.
+* **Full URL Opt-In:** Full URLs (including query parameters and path fragments) are **never logged by default** to protect user privacy from credential/token leakage. Recording full URLs is an explicit, opt-in developer/forensic setting.
 
 ---
 
 ## 6. Shared Flight Recorder Log Integrity
 
-### 6.1 Cryptographic Hash Chaining
+### 6.1 Tamper-Evident Hash Chaining
 All instances stream telemetry-free operational audit events (navigation, TLS parameters, Link Guard decisions, tripwires) to the orchestrator over IPC.
 
-The orchestrator appends events to an immutable log file protected by a cryptographic hash chain:
+The orchestrator appends events to a **tamper-evident log** protected by a cryptographic hash chain:
 $$H_0 = \text{SHA-256}(\text{"AEGIS_GENESIS_"} \parallel \text{session\_uuid})$$
 $$H_i = \text{SHA-256}(H_{i-1} \parallel \text{timestamp} \parallel \text{instance\_id} \parallel \text{payload})$$
 
-### 6.2 Tamper Resistance Properties
+### 6.2 Keyed HMAC & Signed Checkpoints
+To defend against local processes truncating or rewriting the append-only log file:
+1. **Keyed In-Memory HMAC Option:**
+   $$H_i = \text{HMAC-SHA-256}(K_{\text{log}}, H_{i-1} \parallel \text{timestamp} \parallel \text{instance\_id} \parallel \text{payload})$$
+   where $K_{\text{log}}$ is an ephemeral 256-bit secret generated in memory by the orchestrator at startup. Even if a local process gains access to the log file on disk, it cannot forge valid hashes without $K_{\text{log}}$.
+2. **Periodic Signed Checkpoints:**
+   Every 100 entries (or 10 minutes), the orchestrator writes a signed checkpoint digest (e.g. Ed25519 signature over $H_i$) to a separate, append-only checkpoint ledger.
+
+### 6.3 Tamper-Evident Properties & Honest Limits
 1. **Process Privilege Boundary:** Individual browser renderers and extensions have write-only access to their IPC connection; they cannot read or overwrite previous entries on disk.
 2. **Forward Integrity:** If a renderer is exploited in an S1 tab, the attacker cannot alter prior log entries in $H_0 \dots H_{i-1}$ without causing a hash mismatch detected upon verification.
-3. **Crash Resilience:** Each block is flushed to disk with atomic write commits.
+3. **Honest Boundary:** The log is **tamper-evident**, not immutable against root or direct disk compromise. Malware with kernel or full OS privileges can rewrite disk blocks. The hash chain guarantees detection of modification or truncation by unprivileged processes.
 
 ---
 
@@ -148,9 +156,10 @@ $$H_i = \text{SHA-256}(H_{i-1} \parallel \text{timestamp} \parallel \text{instan
 | Threat / Attack Vector | Attacker Capability | Mitigation in Orchestrator Design |
 | :--- | :--- | :--- |
 | **Exploited Renderer Sandbox Escape** | Compromised web renderer in Tier S1 attempts to lower security settings for other tabs. | S3/S4 run in separate OS processes. Autoconfig locks cannot be modified via IPC. Hand-off requests only allow escalating *upward* to stricter tiers. |
-| **Malicious Local Script Injection** | Untrusted process running under same user attempts to send fake hand-offs or read logs. | Socket mode `0600` + `SO_PEERCRED` UID check + ephemeral 256-bit token handshake. Unauthorized connections are dropped immediately. |
-| **Log Truncation / Erasure Attack** | Exploit attempts to wipe evidence of an attack from the Flight Recorder. | Append-only hash chain. Truncating or deleting records breaks cryptographic continuity. |
+| **Malicious Local Script Injection** | Untrusted process running under same user attempts to send fake hand-offs or read logs. | Direct `socketpair` inheritance: no listening socket or filesystem path exists for other processes to connect to. |
+| **Log Truncation / Erasure Attack** | Exploit attempts to wipe evidence of an attack from the Flight Recorder. | Append-only hash chain with in-memory HMAC and signed checkpoints detects truncation or record rewriting. |
 | **URL Injection / Scheme Abuse** | Malicious page lures Link Guard to trigger hand-off of a local `file:///etc/passwd` link. | Strict scheme validation: only `http(s)` permitted. Internal and file schemes blocked. |
+| **URL Parameter Data Leakage** | Exploit or log observer inspects Flight Recorder to harvest sensitive tokens from URLs. | Privacy-preserving logging: only registrable domain logged by default; full URL is strict opt-in. |
 | **Denial of Service via Instance Flooding** | Attacker repeatedly triggers hand-offs to spawn hundreds of instances. | Orchestrator enforces max instance limits (at most 4 named tiers). Reuses existing running tier instances. |
 
 ---
