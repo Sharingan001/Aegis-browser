@@ -1,5 +1,6 @@
 # Python
 __pycache__/
+__pycache__
 *.py[cod]
 *.pyo
 *.pyd
@@ -8,19 +9,27 @@ __pycache__/
 dist/
 .eggs/
 
-# Firefox source / build artifacts (will be in upstream/ when added)
+# Firefox source / build artifacts
 upstream/firefox-*/
 upstream/*.tar.*
 upstream/*.xz
 upstream/obj-*/
+obj-*/
+obj-*
 
-# Firefox ESR tarball (downloaded to firefox-esr/ - not in repo, only the extracted dir)
+# Downloads directory (tarballs, checksums, keys)
+downloads/
+downloads
 firefox-esr/
-firefox-esr-*.tar.xz
-firefox-esr-*.tar.xz.asc
+firefox-esr
+profiles/
+profiles
+*.tar.xz
+*.tar.xz.asc
+SHA256SUMS*
+KEY
 
 # Profile directories used by fast-path testing (never commit a live profile)
-profiles/
 *.profile/
 *.default/
 *.default-release/

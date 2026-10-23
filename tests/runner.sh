@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tests/runner.sh — Aegis test runner (Phase 0)
+# tests/runner.sh - Aegis test runner (Phase 0)
 # Run from the repo root: bash tests/runner.sh
 # Exit code 0 = all pass; non-zero = failure.
 
@@ -14,32 +14,43 @@ echo "Repo: $REPO_ROOT"
 echo "Date: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 echo ""
 
-# ── 1. Prototype unit tests ─────────────────────────────────────────────────
+# -- 1. Prototype unit tests -------------------------------------------------
 echo "--- [1] Prototype unit tests (prototypes/) ---"
-if [ -d "$REPO_ROOT/prototypes" ] && [ -f "$REPO_ROOT/prototypes/test_aegis.py" ]; then
+PY_COUNT=$(find "$REPO_ROOT/prototypes" -maxdepth 1 -name "*.py" 2>/dev/null | wc -l)
+if [ -f "$REPO_ROOT/prototypes/test_aegis.py" ]; then
     cd "$REPO_ROOT/prototypes"
     if python3 -m unittest test_aegis -v 2>&1; then
-        echo "PASS: prototype unit tests"
+        echo "PASS: prototype unit tests (all tests passed)"
         PASS=$((PASS + 1))
     else
-        echo "FAIL: prototype unit tests"
-        ERRORS+=("prototype unit tests")
+        echo "FAIL: prototype unit tests failed"
+        ERRORS+=("prototype unit tests failed")
         FAIL=$((FAIL + 1))
     fi
     cd "$REPO_ROOT"
+elif [ "$PY_COUNT" -gt 0 ]; then
+    echo "FAIL: prototypes/ contains Python files but test_aegis.py is missing"
+    ERRORS+=("prototypes/test_aegis.py missing")
+    FAIL=$((FAIL + 1))
 else
-    echo "SKIP: prototypes/test_aegis.py not found (expected after prototype files are placed)"
-    ERRORS+=("SKIP: prototypes/test_aegis.py missing")
+    echo "SKIP: prototypes/test_aegis.py not found (prototypes directory not yet populated)"
 fi
 
 echo ""
 
-# ── 2. VERIFY.md integrity check ─────────────────────────────────────────────
-echo "--- [2] VERIFY.md exists and has no VERIFIED items that are still marked OPEN ---"
+# -- 2. VERIFY.md presence and format check ----------------------------------
+echo "--- [2] docs/VERIFY.md presence and format check ---"
 VERIFY_FILE="$REPO_ROOT/docs/VERIFY.md"
 if [ -f "$VERIFY_FILE" ]; then
-    echo "PASS: docs/VERIFY.md exists"
-    PASS=$((PASS + 1))
+    # Verify it has standard table headers and sections
+    if grep -q "## Axis S:" "$VERIFY_FILE" && grep -q "## Axis I:" "$VERIFY_FILE" && grep -q "## Axis N:" "$VERIFY_FILE"; then
+        echo "PASS: docs/VERIFY.md exists with required axis sections"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: docs/VERIFY.md missing required axis sections"
+        ERRORS+=("docs/VERIFY.md missing required axis sections")
+        FAIL=$((FAIL + 1))
+    fi
 else
     echo "FAIL: docs/VERIFY.md missing"
     ERRORS+=("docs/VERIFY.md missing")
@@ -48,7 +59,7 @@ fi
 
 echo ""
 
-# ── 3. DECISIONS.md exists ───────────────────────────────────────────────────
+# -- 3. DECISIONS.md exists ---------------------------------------------------
 echo "--- [3] docs/DECISIONS.md exists ---"
 if [ -f "$REPO_ROOT/docs/DECISIONS.md" ]; then
     echo "PASS: docs/DECISIONS.md exists"
@@ -61,7 +72,7 @@ fi
 
 echo ""
 
-# ── 4. upstream/VERSION is set and non-empty ─────────────────────────────────
+# -- 4. upstream/VERSION is set and non-empty ---------------------------------
 echo "--- [4] upstream/VERSION is set ---"
 VERSION_FILE="$REPO_ROOT/upstream/VERSION"
 if [ -f "$VERSION_FILE" ] && [ -s "$VERSION_FILE" ]; then
@@ -76,13 +87,84 @@ fi
 
 echo ""
 
-# ── 5. Placeholder: axis enforcement tests (Phase 2+) ────────────────────────
-echo "--- [5] Axis enforcement tests (Phase 2+, skipped in Phase 0) ---"
+# -- 5. policies.json syntax and schema validation ---------------------------
+echo "--- [5] config/policy/policies.json validation ---"
+POLICY_FILE="$REPO_ROOT/config/policy/policies.json"
+if [ -f "$POLICY_FILE" ]; then
+    if python3 -c "
+import json, sys
+try:
+    with open('$POLICY_FILE') as f:
+        data = json.load(f)
+except Exception as e:
+    sys.exit(f'Invalid JSON: {e}')
+
+if 'policies' not in data:
+    sys.exit('Missing root policies key')
+
+def check_no_underscore_keys(obj, path=''):
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k.startswith('_'):
+                sys.exit(f'Disallowed key starting with underscore: {path}{k}')
+            check_no_underscore_keys(v, f'{path}{k}.')
+    elif isinstance(obj, list):
+        for i, item in enumerate(obj):
+            check_no_underscore_keys(item, f'{path}[{i}].')
+
+check_no_underscore_keys(data['policies'], 'policies.')
+"; then
+        echo "PASS: config/policy/policies.json is valid JSON with no underscore keys in policies"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: config/policy/policies.json validation failed"
+        ERRORS+=("policies.json validation failed")
+        FAIL=$((FAIL + 1))
+    fi
+else
+    echo "FAIL: config/policy/policies.json missing"
+    ERRORS+=("config/policy/policies.json missing")
+    FAIL=$((FAIL + 1))
+fi
+
+echo ""
+
+# -- 6. Autoconfig ASCII check -----------------------------------------------
+echo "--- [6] Autoconfig ASCII check ---"
+AUTOCONFIG_JS="$REPO_ROOT/config/autoconfig/autoconfig.js"
+AEGIS_CFG="$REPO_ROOT/config/autoconfig/aegis.cfg"
+ASCII_OK=1
+
+for f in "$AUTOCONFIG_JS" "$AEGIS_CFG"; do
+    if [ -f "$f" ]; then
+        if ! python3 -c "open('$f', 'rb').read().decode('ascii')" 2>/dev/null; then
+            echo "FAIL: $f contains non-ASCII characters"
+            ERRORS+=("$f contains non-ASCII characters")
+            ASCII_OK=0
+        fi
+    else
+        echo "FAIL: $f missing"
+        ERRORS+=("$f missing")
+        ASCII_OK=0
+    fi
+done
+
+if [ "$ASCII_OK" -eq 1 ]; then
+    echo "PASS: autoconfig.js and aegis.cfg are strictly ASCII"
+    PASS=$((PASS + 1))
+else
+    FAIL=$((FAIL + 1))
+fi
+
+echo ""
+
+# -- 7. Placeholder: axis enforcement tests (Phase 2+) -----------------------
+echo "--- [7] Axis enforcement tests (Phase 2+, skipped in Phase 0) ---"
 echo "SKIP: axis enforcement tests are not yet implemented"
 
 echo ""
 
-# ── Summary ──────────────────────────────────────────────────────────────────
+# -- Summary ------------------------------------------------------------------
 echo "=== Summary ==="
 echo "PASS: $PASS"
 echo "FAIL: $FAIL"

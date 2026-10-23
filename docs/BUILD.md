@@ -9,7 +9,7 @@
 | Item | Value |
 |---|---|
 | Version | 153.5.1esr |
-| Release date | 2026-07-21 |
+| Release date | Point release (initial 153.0 released 2026-07-21) |
 | Verified | 2026-10-23 from https://www.mozilla.org/en-US/firefox/organizations/all/ |
 | Tarball | `firefox-153.5.1esr.tar.xz` (linux-x86_64/en-US) |
 | SHA-256 | `e289bdc532decf2b54dea9b5ac64cf6f84a62eeec4d4a9ec2f69590f61b0ff1c` |
@@ -41,19 +41,22 @@ git --version && python3 --version && curl --version | head -1 && gpg --version 
 
 ```bash
 cd /home/god/Ageis
+mkdir -p downloads && cd downloads
 
-# Download tarball, checksum file, and signature
+# Download tarball, checksum file, signature, and signing key into downloads/
 curl -L -O https://releases.mozilla.org/pub/firefox/releases/153.5.1esr/linux-x86_64/en-US/firefox-153.5.1esr.tar.xz
 curl -L -O https://releases.mozilla.org/pub/firefox/releases/153.5.1esr/SHA256SUMS
 curl -L -O https://releases.mozilla.org/pub/firefox/releases/153.5.1esr/SHA256SUMS.asc
+curl -L -O https://releases.mozilla.org/pub/firefox/releases/153.5.1esr/KEY
 
 # Verify SHA-256
 grep "linux-x86_64/en-US/firefox-153.5.1esr.tar.xz" SHA256SUMS | sha256sum -c
 
-# Verify GPG signature (import Mozilla's release key first if not present)
-# Key fingerprint: verify against https://www.mozilla.org/en-US/security/#
-curl -L https://releases.mozilla.org/pub/firefox/releases/153.5.1esr/KEY | gpg --import
+# Import Mozilla's release key and verify signature
+# Signing key fingerprint: verify against Mozilla's security/release signing keys page
+gpg --import KEY
 gpg --verify SHA256SUMS.asc SHA256SUMS
+cd /home/god/Ageis
 ```
 
 Expected sha256sum output: `firefox-153.5.1esr.tar.xz: OK`
@@ -62,9 +65,11 @@ Expected sha256sum output: `firefox-153.5.1esr.tar.xz: OK`
 
 ```bash
 cd /home/god/Ageis
-tar -xJf firefox-153.5.1esr.tar.xz
-# Creates: firefox-esr/  (the directory name from the tarball; rename if needed)
-# VERIFY: the tarball may unpack to 'firefox/' — check and rename to 'firefox-esr/' if so.
+tar -xJf downloads/firefox-153.5.1esr.tar.xz
+# The archive unpacks to 'firefox/'. Rename to 'firefox-esr/':
+if [ -d "firefox" ] && [ ! -d "firefox-esr" ]; then
+    mv firefox firefox-esr
+fi
 ```
 
 The extracted directory is in `.gitignore` (large binary, not in repo).
