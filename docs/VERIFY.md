@@ -55,11 +55,11 @@ All policy/pref names below are from spec Part 5.2 and must be verified against 
 
 | ID | Pref / Policy name | Axis level | Status | Notes |
 |---|---|---|---|---|
-| VERIFY-I-001 | `privacy.resistFingerprinting` | I2+ | OPEN | Verify behavior in ESR 153 vs the newer fingerprintingProtection prefs |
-| VERIFY-I-002 | `privacy.fingerprintingProtection` and sub-prefs | I2+ | OPEN | Spec says "evaluate both before choosing"; do this in Phase 2 |
-| VERIFY-I-003 | Letterboxing / window size normalization pref name | I2 | OPEN | Part of resist-fingerprinting; verify sub-feature pref if any |
-| VERIFY-I-004 | Timer precision reduction pref | I2+ | OPEN | Verify pref name in ESR 153 |
-| VERIFY-I-005 | Canvas / audio readback normalization: is seeded noise available natively? | I3 | OPEN | Phase 2 evaluation required - SPIKE-002 |
+| VERIFY-I-001 | `privacy.resistFingerprinting` | I3/I4 | VERIFIED (EFFECTIVE) | Evaluated on ESR 153.5.1 in Phase 2b. Enforces 80 targets: UTC timezone spoofing, 1200x600 rounded window, DPR=2, concurrency=4, touch=5, WebGL vendor/renderer sanitized to "Mozilla", per-readback random canvas noise. Does not spoof Linux UA/platform. |
+| VERIFY-I-002 | `privacy.fingerprintingProtection` and sub-prefs | I1/I2 | VERIFIED (EFFECTIVE) | Evaluated in Phase 2b. Enforces selective targets: origin-keyed canvas salting, font restrictions, tiered concurrency (8 on high-core). Supports `privacy.fingerprintingProtection.overrides` (+Target/-Target syntax). Remote overrides locked false (D-012). |
+| VERIFY-I-003 | Letterboxing: `privacy.resistFingerprinting.letterboxing` | I3/I4 | VERIFIED (EFFECTIVE) | Confirmed active in ESR 153 via `RFPHelper.sys.mjs` and `letterboxing.css`. Pads viewport with margin bars at 200x100px steps. |
+| VERIFY-I-004 | Timer precision reduction: `privacy.reduceTimerPrecision` + RFP | I2+ | VERIFIED (EFFECTIVE) | Baseline `privacy.reduceTimerPrecision: true` enforces 1ms steps. RFP default enforces ~16.667ms frame-rate clamping with jitter. Configurable via `privacy.resistFingerprinting.reduceTimerPrecision.microseconds` (100000us = 100ms verified). |
+| VERIFY-I-005 | Canvas seeded noise: `EfficientCanvasRandomization` | I1/I2 | VERIFIED (EFFECTIVE) | Native origin-keyed canvas noise provided by FPP. Empirical test proved noise is keyed by site/principal, NOT by container (`userContextId`); tabs in different containers on the same origin get identical canvas noise. |
 | VERIFY-I-006 | `media.peerconnection.*` prefs for WebRTC local-IP leak | I2+ | OPEN | Verify exact pref names in ESR 153 |
 | VERIFY-I-007 | `network.http.referer.*` prefs for referrer trimming | I2+ | OPEN | Verify pref names in ESR 153 |
 | VERIFY-I-008 | `intl.accept_languages` handling for language header normalization | I2+ | OPEN | Verify mechanism in ESR 153 |
@@ -84,7 +84,7 @@ All policy/pref names below are from spec Part 5.2 and must be verified against 
 | ID | Spike | Phase | Status |
 |---|---|---|---|
 | SPIKE-001 | S4 per-origin JavaScript control: system extension with privileges vs engine patch. Compare options, risks, recommendation. | Phase 2 | OPEN |
-| SPIKE-002 | I3 seeded noise: evaluate `privacy.fingerprintingProtection` sub-prefs in ESR 153 for native seeded canvas/audio noise before building custom implementation. | Phase 2 | OPEN |
+| SPIKE-002 | I3 seeded noise: evaluate `privacy.fingerprintingProtection` sub-prefs in ESR 153 for native seeded canvas/audio noise before building custom implementation. | Phase 2 | RESOLVED (Phase 2b report, D-012) |
 | SPIKE-003 | Which S levels are acceptable in Tor mode after crowd-analysis measurements (spec R2 rule)? | Phase 3/R | OPEN |
 | SPIKE-004 | Per-Cell Tor circuit isolation: supported by existing proxy mechanisms or requires engine patch? | Phase 4 | OPEN |
 | SPIKE-005 | Instance-wide autoconfig vs per-Cell Surface levels: evaluate process-per-tier, per-profile autoconfig (VERIFY-S-022), Tor-style restart, and engine patches (D-008). | Phase 2 | OPEN |

@@ -14,6 +14,7 @@ All test pages are benign, defanged fixtures — never real phishing or malware 
 
 import argparse
 import http.server
+import json
 import os
 import pathlib
 import signal
@@ -92,6 +93,15 @@ class FixtureHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         path = urllib.parse.urlparse(self.path).path
 
+        # Record incoming headers for test inspection
+        try:
+            headers_dict = {k: v for k, v in self.headers.items()}
+            headers_file = FIXTURES_DIR / "output" / "last_headers.json"
+            headers_file.parent.mkdir(parents=True, exist_ok=True)
+            headers_file.write_text(json.dumps(headers_dict, indent=2))
+        except Exception:
+            pass
+
         # Try disk first
         disk_path = FIXTURES_DIR / path.lstrip("/")
         if disk_path.is_file():
@@ -126,6 +136,18 @@ class FixtureHandler(http.server.BaseHTTPRequestHandler):
             report_file = FIXTURES_DIR / "output" / "s3_report.json"
             report_file.parent.mkdir(parents=True, exist_ok=True)
             report_file.write_bytes(body)
+            self._send(200, "application/json", b'{"status":"ok"}')
+            return
+        if path == "/api/report_fp":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            cid = query.get("cid", ["default"])[0]
+            report_file = FIXTURES_DIR / "output" / f"fp_report_{cid}.json"
+            report_file.parent.mkdir(parents=True, exist_ok=True)
+            report_file.write_bytes(body)
+            # Also write default fp_report.json for backward compatibility
+            (FIXTURES_DIR / "output" / "fp_report.json").write_bytes(body)
             self._send(200, "application/json", b'{"status":"ok"}')
             return
         self._send(404, "text/plain", b"Not found")

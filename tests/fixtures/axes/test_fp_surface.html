@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Aegis Fingerprint Evaluation Probe</title>
+</head>
+<body>
+  <h1>Aegis RFP vs FPP Empirical Measurement</h1>
+  <div id="status">Running probes...</div>
+  <pre id="output"></pre>
+
+  <script>
+    async function sha256Hex(bufferOrString) {
+      let data;
+      if (typeof bufferOrString === "string") {
+        data = new TextEncoder().encode(bufferOrString);
+      } else if (bufferOrString instanceof ArrayBuffer) {
+        data = new Uint8Array(bufferOrString);
+      } else if (bufferOrString.buffer instanceof ArrayBuffer) {
+        data = new Uint8Array(bufferOrString.buffer, bufferOrString.byteOffset, bufferOrString.byteLength);
+      } else {
+        data = new Uint8Array(bufferOrString);
+      }
+      const hashBuf = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function probeCanvas() {
+      // 1. Draw distinct shapes, text, alpha, fonts, colors
+      const c1 = document.createElement("canvas");
+      c1.width = 240;
+      c1.height = 60;
+      const ctx1 = c1.getContext("2d");
+
+      ctx1.fillStyle = "#f60";
+      ctx1.fillRect(10, 10, 80, 40);
+
+      ctx1.fillStyle = "#069";
+      ctx1.font = "16px sans-serif";
+      ctx1.fillText("Aegis FP Probe 🔒", 15, 35);
+
+      ctx1.strokeStyle = "rgba(120, 20, 200, 0.7)";
+      ctx1.lineWidth = 2;
+      ctx1.strokeRect(5, 5, 230, 50);
+
+      const dataUrl1 = c1.toDataURL();
+      const imgData1 = ctx1.getImageData(0, 0, 240, 60).data;
+
+      const hashDataUrl1 = await sha256Hex(dataUrl1);
+      const hashImgData1 = await sha256Hex(imgData1);
+
+      // Repeat extraction on same canvas to check determinism / stability
+      const dataUrl1_repeat = c1.toDataURL();
+      const imgData1_repeat = ctx1.getImageData(0, 0, 240, 60).data;
+      const hashDataUrl1_repeat = await sha256Hex(dataUrl1_repeat);
+      const hashImgData1_repeat = await sha256Hex(imgData1_repeat);
+
+      // Create a second identical canvas to check cross-element consistency
+      const c2 = document.createElement("canvas");
+      c2.width = 240;
+      c2.height = 60;
+      const ctx2 = c2.getContext("2d");
+      ctx2.fillStyle = "#f60";
+      ctx2.fillRect(10, 10, 80, 40);
+      ctx2.fillStyle = "#069";
+      ctx2.font = "16px sans-serif";
+      ctx2.fillText("Aegis FP Probe 🔒", 15, 35);
+      ctx2.strokeStyle = "rgba(120, 20, 200, 0.7)";
+      ctx2.lineWidth = 2;
+      ctx2.strokeRect(5, 5, 230, 50);
+
+      const dataUrl2 = c2.toDataURL();
+      const hashDataUrl2 = await sha256Hex(dataUrl2);
+
+      return {
+        dataUrlHash: hashDataUrl1,
+        imgDataHash: hashImgData1,
+        repeatSameCanvasStable: (hashDataUrl1 === hashDataUrl1_repeat) && (hashImgData1 === hashImgData1_repeat),
+        crossCanvasConsistent: (hashDataUrl1 === hashDataUrl2)
+      };
+    }
+
+    async function probeAudio() {
+      try {
+        const AudioCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        if (!AudioCtx) {
+          return { supported: false, reason: "OfflineAudioContext not available" };
+        }
+        const ctx = new AudioCtx(1, 44100, 44100);
+        const osc = ctx.createOscillator();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(10000, ctx.currentTime);
+
+        const comp = ctx.createDynamicsCompressor();
+        comp.threshold.setValueAtTime(-50, ctx.currentTime);
+        comp.knee.setValueAtTime(40, ctx.currentTime);
+        comp.ratio.setValueAtTime(12, ctx.currentTime);
+        comp.attack.setValueAtTime(0, ctx.currentTime);
+        comp.release.setValueAtTime(0.25, ctx.currentTime);
+
+        osc.connect(comp);
+        comp.connect(ctx.destination);
+        osc.start(0);
+
+        const rendered = await ctx.startRendering();
+        const pcm = rendered.getChannelData(0);
+        const sampleSub = pcm.subarray(4500, 5000);
+        let sum = 0;
+        for (let i = 0; i < sampleSub.length; i++) {
+          sum += Math.abs(sampleSub[i]);
+        }
+        const pcmHash = await sha256Hex(pcm.buffer);
+        return {
+          supported: true,
+          sampleRate: ctx.sampleRate,
+          pcmHash: pcmHash,
+          sampleSum: sum
+        };
+      } catch (e) {
+        return { supported: false, error: e.toString() };
+      }
+    }
+
+    function probeTimers() {
+      // Collect non-zero deltas of performance.now()
+      const deltas = [];
+      let last = performance.now();
+      for (let i = 0; i < 500; i++) {
+        const now = performance.now();
+        const diff = now - last;
+        if (diff > 0) {
+          deltas.push(diff);
+          last = now;
+        }
+        if (deltas.length >= 60) break;
+      }
+
+      deltas.sort((a, b) => a - b);
+      const minDelta = deltas.length > 0 ? deltas[0] : null;
+      const medianDelta = deltas.length > 0 ? deltas[Math.floor(deltas.length / 2)] : null;
+      const uniqueRounded = Array.from(new Set(deltas.map(d => Math.round(d * 1000) / 1000))).slice(0, 5);
+
+      // Date.now() deltas
+      const dateDeltas = [];
+      let lastDate = Date.now();
+      for (let i = 0; i < 50000; i++) {
+        const dNow = Date.now();
+        const diff = dNow - lastDate;
+        if (diff > 0) {
+          dateDeltas.push(diff);
+          lastDate = dNow;
+        }
+        if (dateDeltas.length >= 20) break;
+      }
+      dateDeltas.sort((a, b) => a - b);
+      const minDateDelta = dateDeltas.length > 0 ? dateDeltas[0] : null;
+
+      return {
+        perfMinDeltaMs: minDelta,
+        perfMedianDeltaMs: medianDelta,
+        perfSampleDeltasMs: uniqueRounded,
+        dateMinDeltaMs: minDateDelta
+      };
+    }
+
+    function probeWindowAndScreen() {
+      return {
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
+        outerWidth: window.outerWidth,
+        outerHeight: window.outerHeight,
+        screenWidth: screen.width,
+        screenHeight: screen.height,
+        availWidth: screen.availWidth,
+        availHeight: screen.availHeight,
+        colorDepth: screen.colorDepth,
+        pixelDepth: screen.pixelDepth,
+        devicePixelRatio: window.devicePixelRatio
+      };
+    }
+
+    function probeTimezone() {
+      let resolvedTz = "unknown";
+      try {
+        resolvedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      } catch (e) {
+        resolvedTz = "err:" + e.message;
+      }
+      const offsetMinutes = new Date().getTimezoneOffset();
+      const sampleDateStr = new Date(1700000000000).toString(); // fixed epoch: Nov 14 2023 UTC
+      return {
+        timeZone: resolvedTz,
+        offsetMinutes: offsetMinutes,
+        sampleDateStr: sampleDateStr
+      };
+    }
+
+    function probeLanguage() {
+      return {
+        language: navigator.language,
+        languages: navigator.languages ? Array.from(navigator.languages) : [],
+        userAgent: navigator.userAgent,
+        appVersion: navigator.appVersion,
+        platform: navigator.platform,
+        oscpu: navigator.oscpu || null
+      };
+    }
+
+    function probeHardware() {
+      let webglVendor = "unavailable";
+      let webglRenderer = "unavailable";
+      try {
+        const glCanvas = document.createElement("canvas");
+        const gl = glCanvas.getContext("webgl");
+        if (gl) {
+          const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+          if (dbg) {
+            webglVendor = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL);
+            webglRenderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+          } else {
+            webglVendor = "ext_unavailable";
+            webglRenderer = "ext_unavailable";
+          }
+        }
+      } catch (e) {
+        webglVendor = "error:" + e.message;
+        webglRenderer = "error:" + e.message;
+      }
+
+      return {
+        hardwareConcurrency: navigator.hardwareConcurrency,
+        deviceMemory: navigator.deviceMemory || null,
+        maxTouchPoints: navigator.maxTouchPoints,
+        webglVendor: webglVendor,
+        webglRenderer: webglRenderer
+      };
+    }
+
+    async function runAllProbes() {
+      const results = {};
+      results.canvas = await probeCanvas();
+      results.audio = await probeAudio();
+      results.timers = probeTimers();
+      results.windowScreen = probeWindowAndScreen();
+      results.timezone = probeTimezone();
+      results.language = probeLanguage();
+      results.hardware = probeHardware();
+
+      window.__AEGIS_FP_RESULTS__ = results;
+      document.getElementById("status").textContent = "Completed.";
+      document.getElementById("output").textContent = JSON.stringify(results, null, 2);
+
+      // Post back to local test server
+      try {
+        const queryParams = new URLSearchParams(window.location.search);
+        const cid = queryParams.get("cid") || "default";
+        results.cid = cid;
+        await fetch("/api/report_fp?cid=" + encodeURIComponent(cid), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(results)
+        });
+      } catch (e) {
+        // silent if offline
+      }
+    }
+
+    runAllProbes();
+  </script>
+</body>
+</html>

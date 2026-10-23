@@ -199,3 +199,24 @@ invalid mozconfig flags on a constrained-disk system (~86 GB free).
 
 **Spec references:** Parts 5.1, 5.2, 7.1, 14.
 
+---
+
+## D-012 — 2026-10-24 — Phase 2b Fingerprinting Evaluation, Identity Direction (Hybrid), and Offline Defaults
+
+**Decision:**
+1. **FPP Remote Overrides Disabled by Default:** `privacy.fingerprintingProtection.remoteOverrides.enabled` is locked to `false` across all tiers in accordance with Hard Rule 7 (local-first, no telemetry). Disabling Mozilla's remote WebCompat override lists means domain-specific exemptions pushed by Mozilla will not be received, which may increase breakage on sites that rely on unrandomized canvas or unmasked hardware. An opt-in web-compat module may be designed in later phases with explicit disclosure.
+2. **External Fingerprinting Sites:** External fingerprinting test sites (Cover Your Tracks, BrowserLeaks, CreepJS, AmIUnique) remain unapproved. All verification must be performed using local defanged test pages served by `tests/tools/local_test_server.py`.
+3. **JIT Measurement Under Quantized Timers:** Because RFP quantizes `performance.now()` (~16.667ms frame-rate clamping by default; 100ms when configured), in-page microbenchmark duration is supplemented with:
+   - Behavioral verification (Option B): Operation frequency counting per timer tick edge (measuring completed iterations within a discrete clock quantum).
+   - Live pref verification (Option C): Direct query of `javascript.options.baselinejit` and `ion` via Marionette chrome context.
+   - Fallback (Option A): Scaled macro-benchmark workload (duration >> 1,000ms so quantum error is < 5%).
+4. **Identity Direction (Hybrid Model):**
+   - Standard / Guarded tiers (I1, I2): Deploy `privacy.fingerprintingProtection: true` (FPP) with remote overrides disabled. Provides origin-keyed canvas salting (`EfficientCanvasRandomization`), font restrictions (`FontVisibilityLangPack`), and concurrency tiering (`NavigatorHWConcurrencyTiered`) while preserving site compatibility (local timezone, native window sizes, unmasked WebGL).
+   - Strict / Research / Detonation tiers (I3, I4): Deploy `privacy.resistFingerprinting: true` (RFP) with standard upstream defaults and no custom deviations. Enforces strict uniformity (UTC timezone, rounded viewports, 1ms/16.67ms timer clamping with jitter, sanitized WebGL vendor/renderer `"Mozilla"`).
+5. **Container Canvas Isolation Limitation:** Empirical testing on ESR 153.5.1 confirmed that `EfficientCanvasRandomization` (FPP) keys the random noise seed strictly by site / eTLD+1 principal, NOT by container (`userContextId`). Two tabs visiting the same origin in different containers (`userContextId: 1` vs `userContextId: 2`) within the same instance produce the **exact same canvas noise** (`dataUrlHash` identical). Multi-Account Containers isolate cookies and storage, but do NOT isolate canvas fingerprint noise within a single instance. True canvas isolation across Cell identities requires separate process instances (supporting the Process-Tiered architecture of A-001).
+6. **FPP Per-Target Override Mechanism:** Verified that `privacy.fingerprintingProtection.overrides` accepts comma-separated `+TargetName,-TargetName` strings (e.g., `+CanvasRandomization,-EfficientCanvasRandomization,+JSDateTimeUTC`), evaluated on top of `DefaultTargetsFPP`.
+
+**Why:** Balances daily usability in lower tiers against rigorous Tor-aligned uniformity in strict tiers, honors offline constraints, and grounds architecture in empirical Gecko behavior.
+
+**Spec references:** Parts 5.3, 7.1, 7.3, docs/spec-amendments/A-001.md.
+
