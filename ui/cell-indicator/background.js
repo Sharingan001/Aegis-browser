@@ -1,8 +1,9 @@
 /**
  * Aegis Browser - Cell Indicator Background Service
  *
- * Updates the browserAction badge based on the active Cell's declared posture.
+ * Updates the browserAction badge based on the active Cell's declared posture placeholder.
  * Does NOT assume per-tab preferences or mutate process-level prefs (ref: D-008).
+ * Displays 'DECL' badge to indicate declared (not enforced, not verified) placeholder posture.
  */
 
 /* global browser, chrome, CellStore */
@@ -10,8 +11,10 @@ const api = typeof browser !== 'undefined' ? browser : chrome;
 
 function updateBadgeForTab(tabId) {
   const cell = CellStore.getCellForTab(tabId);
-  const badgeText = cell.surface || 'S1';
+  // Show 'DECL' to unambiguously mark declared placeholder posture
+  const badgeText = cell.badge_text || 'DECL';
   const badgeColor = cell.color || '#38BDF8';
+  const badgeTitle = `Aegis Cell Posture (PLACEHOLDER: ${cell.name} - Declared, Not Enforced, Not Verified)`;
 
   if (api.browserAction && api.browserAction.setBadgeText) {
     api.browserAction.setBadgeText({ text: badgeText, tabId: tabId });
@@ -19,16 +22,19 @@ function updateBadgeForTab(tabId) {
   if (api.browserAction && api.browserAction.setBadgeBackgroundColor) {
     api.browserAction.setBadgeBackgroundColor({ color: badgeColor, tabId: tabId });
   }
+  if (api.browserAction && api.browserAction.setTitle) {
+    api.browserAction.setTitle({ title: badgeTitle, tabId: tabId });
+  }
 }
 
-// Tab activation listener
+// Tab activation listener (only accesses tabId, no 'tabs' permission required)
 if (api.tabs && api.tabs.onActivated) {
   api.tabs.onActivated.addListener((activeInfo) => {
     updateBadgeForTab(activeInfo.tabId);
   });
 }
 
-// Tab updated listener
+// Tab updated listener (only accesses tabId, no 'tabs' permission required)
 if (api.tabs && api.tabs.onUpdated) {
   api.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (changeInfo.status === 'complete') {

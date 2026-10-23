@@ -3,10 +3,12 @@
 Unit tests for Aegis UI & Cell Indicator (Phase 1a).
 Verifies:
 1. Branding theme manifest validity.
-2. Cell indicator extension manifest validity and structure.
+2. Cell indicator extension manifest validity, minimal permissions (no tabs, no storage), and justification.
 3. Abstract data model integrity (cell -> {N, S, I}).
 4. Honest language lint (NO prohibited marketing buzzwords like 'safe', 'secure', 'anonymous').
-5. Architectural compliance with D-008 (no per-tab pref mutation).
+5. Visible placeholder notice required (explicitly marked NOT ENFORCED, NOT VERIFIED).
+6. Flag unverified protection claims (no claims of active routing or active enforcement).
+7. Architectural compliance with D-008 (no per-tab pref mutation).
 """
 
 import json
@@ -24,6 +26,15 @@ PROHIBITED_TERMS = [
     r"\binvulnerable\b",
     r"\banonymous\b",
     r"\bfoolproof\b"
+]
+
+UNVERIFIED_PROTECTION_TERMS = [
+    r"\broute active\b",
+    r"\brouting active\b",
+    r"\bsurface profile active\b",
+    r"\bidentity posture active\b",
+    r"\bonion circuit routing with\b",
+    r"\bephemeral state\b(?!\s*\(target\s*spec\))"  # must be qualified as target spec or placeholder
 ]
 
 class TestBrandingAndTheme(unittest.TestCase):
@@ -70,7 +81,36 @@ class TestCellIndicatorExtension(unittest.TestCase):
         self.assertEqual(manifest.get("name"), "Aegis Cell Indicator")
         self.assertIn("browser_action", manifest)
         self.assertIn("background", manifest)
-        self.assertIn("permissions", manifest)
+
+    def test_permissions_removed_and_justified(self):
+        """Verify 'tabs' and 'storage' permissions are removed and justification is documented."""
+        manifest_path = os.path.join(self.ext_dir, "manifest.json")
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        perms = manifest.get("permissions", [])
+        self.assertNotIn("tabs", perms, "'tabs' permission is unused and must be omitted")
+        self.assertNotIn("storage", perms, "'storage' permission is unused and must be omitted")
+        self.assertEqual(len(perms), 0, "Cell Indicator should operate with 0 elevated permissions")
+
+        # Justification must be present in notes/description
+        notes = manifest.get("notes", "")
+        self.assertTrue(
+            "justification" in notes.lower() or "permission" in notes.lower(),
+            "Manifest must document permission justification in 'notes'"
+        )
+
+    def test_visible_placeholder_notice_required(self):
+        """Verify popup has a visible placeholder notice stating not enforced and not verified."""
+        popup_html_path = os.path.join(self.ext_dir, "popup", "popup.html")
+        self.assertTrue(os.path.isfile(popup_html_path), "popup.html missing")
+        with open(popup_html_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn("placeholder-notice", content, "popup.html must contain a visible .placeholder-notice banner")
+        self.assertIn("PLACEHOLDER", content)
+        self.assertIn("NOT ENFORCED", content)
+        self.assertIn("NOT VERIFIED", content)
 
     def test_abstract_data_model_in_store(self):
         store_path = os.path.join(self.ext_dir, "data", "cell_store.js")
@@ -135,6 +175,24 @@ class TestCellIndicatorExtension(unittest.TestCase):
                     self.assertIsNone(
                         match,
                         f"Prohibited security claim '{match.group(0) if match else ''}' found in {path}:{line_no}: {line.strip()}"
+                    )
+
+    def test_unverified_protection_claims_lint(self):
+        """Verify UI copy does NOT make unverified active protection claims."""
+        files_to_check = [
+            os.path.join(self.ext_dir, "popup", "popup.html"),
+            os.path.join(self.ext_dir, "popup", "popup.js"),
+            os.path.join(self.ext_dir, "data", "cell_store.js"),
+        ]
+        for path in files_to_check:
+            with open(path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            for line_no, line in enumerate(lines, 1):
+                for pattern in UNVERIFIED_PROTECTION_TERMS:
+                    match = re.search(pattern, line, re.IGNORECASE)
+                    self.assertIsNone(
+                        match,
+                        f"Unverified protection claim '{match.group(0) if match else ''}' found in {path}:{line_no}: {line.strip()}"
                     )
 
 

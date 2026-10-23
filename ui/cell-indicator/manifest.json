@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Aegis Cell Indicator",
   "version": "1.0.0",
-  "description": "Displays declared 3-axis posture (Network, Surface, Identity) for the active Cell context.",
+  "description": "Displays declared 3-axis posture placeholder (Network, Surface, Identity) for active Cell context.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -21,7 +21,7 @@
       "32": "icons/icon-32.png",
       "48": "icons/icon-48.png"
     },
-    "default_title": "Aegis Cell Posture",
+    "default_title": "Aegis Cell Posture (PLACEHOLDER: Declared, Not Enforced, Not Verified)",
     "default_popup": "popup/popup.html"
   },
   "browser_specific_settings": {
@@ -30,8 +30,9 @@
       "strict_min_version": "153.0"
     }
   },
-  "permissions": [
-    "tabs",
-    "storage"
-  ]
+  "permissions": [],
+  "developer": {
+    "name": "Aegis Project"
+  },
+  "notes": "Permission justification: 0 elevated permissions requested. Tab tracking uses tabId only (does not require 'tabs' host/URL permission). Operates purely on in-memory prototype state without persistent storage."
 }

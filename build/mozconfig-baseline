@@ -30,8 +30,11 @@ ac_add_options --disable-debug-symbols
 # Disable Unnecessary Subsystems
 ac_add_options --disable-tests
 ac_add_options --disable-crashreporter
+# Note (D-010): Validate --disable-telemetry with ./mach configure before full build.
+# In modern Gecko builds, telemetry is typically controlled by branding/channel/prefs rather than configure.
 ac_add_options --disable-telemetry
 ac_add_options --disable-updater
 
 # Rust Code Generation Constraint
+# Note (D-010): Verify whether exporting RUSTFLAGS is accepted or overridden by mach orchestration.
 export RUSTFLAGS="-C codegen-units=4"

@@ -36,14 +36,14 @@ document.addEventListener('DOMContentLoaded', () => {
     cellDot.style.backgroundColor = cell.color;
     cellDot.style.boxShadow = `0 0 8px ${cell.color}`;
 
-    cellBadge.textContent = cell.surface;
+    cellBadge.textContent = cell.badge_text || 'DECL';
     cellBadge.style.borderColor = cell.color;
     cellBadge.style.color = cell.color;
 
     // Network Axis
     const netDef = (definitions && definitions.network && definitions.network[cell.route]) || {
-      name: cell.route,
-      summary: 'Route active'
+      name: `${cell.route} (Target Spec)`,
+      summary: 'Target specification (placeholder, not active)'
     };
     networkCode.textContent = cell.route;
     networkTitle.textContent = netDef.name;
@@ -51,8 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Surface Axis
     const surfDef = (definitions && definitions.surface && definitions.surface[cell.surface]) || {
-      name: cell.surface,
-      summary: 'Surface profile active'
+      name: `${cell.surface} (Target Spec)`,
+      summary: 'Target specification (placeholder in fastpath default)'
     };
     surfaceCode.textContent = cell.surface;
     surfaceTitle.textContent = surfDef.name;
@@ -60,8 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Identity Axis
     const identDef = (definitions && definitions.identity && definitions.identity[cell.identity]) || {
-      name: cell.identity,
-      summary: 'Identity posture active'
+      name: `${cell.identity} (Target Spec)`,
+      summary: 'Target specification (placeholder, not active)'
     };
     identityCode.textContent = cell.identity;
     identityTitle.textContent = identDef.name;

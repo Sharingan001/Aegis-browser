@@ -45,7 +45,7 @@ All policy/pref names below are from spec Part 5.2 and must be verified against 
 | VERIFY-S-019 | Policy key `EnableTrackingProtection` with `Fingerprinting` + `Cryptomining` | all | VERIFIED (SET via policy) | In policies.json: ACCEPTED. about:policies shows EnableTrackingProtection with Value=true, Locked=true. |
 | VERIFY-S-020 | Policy key `DNSOverHTTPS` with `Locked` flag | N1 | VERIFIED (SET via policy) | In policies.json: ACCEPTED. about:policies shows DNSOverHTTPS with Enabled=true, Locked=true. |
 | VERIFY-S-021 | Autoconfig mechanism: `autoconfig.js` + `.cfg` file | all | VERIFIED (EFFECTIVE) | Confirmed functional in ESR 153; successfully applies lockPref calls for prefs restricted by policies.json. |
-| VERIFY-S-022 | Autoconfig sandbox: check whether `getenv` or profile path inspection is available | S-axis | OPEN | Check whether autoconfig execution context allows reading environment variables or profile directory to enable per-profile tiering (D-008). |
+| VERIFY-S-022 | Autoconfig sandbox: check whether `getenv` or profile path inspection is available | S-axis | VERIFIED (EFFECTIVE) | Verified on ESR 153 runtime: `getenv('AEGIS_SURFACE_TIER')` and `Components.classes['@mozilla.org/process/environment;1']` work inside aegis.cfg. Reading a tier file from profile directory via `Services.dirsvc.get('ProfD', Components.interfaces.nsIFile)` also works. Proven effective by disabling WASM/JIT conditionally on S3 while keeping S1 enabled. |
 
 ---
 

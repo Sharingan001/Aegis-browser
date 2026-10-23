@@ -168,7 +168,22 @@ as part of completing Phase 0 wrap-up:
 **Why:** Ensures reproducible baseline, non-destructive defaults, and deterministic CI.
 
 **Spec references:** Parts 10, 13, 14, 16.
-
 ---
 
+## D-010 — 2026-10-23 — Phase 1b Deferral and mozconfig Validation Policy
 
+**Decision:** Phase 1b compiled source build is deferred. Do not download source archives or
+initiate source compilation at this time. Prior to any future source compilation:
+1. **Pre-flight configure validation:** Run `./mach configure` (or dry configure check) to validate
+   all mozconfig options against the engine's build system before launching a full compile.
+   Specifically verify whether `--disable-telemetry` is a valid configure option in ESR 153
+   (modern Gecko typically regulates telemetry via channel/branding and prefs rather than a configure flag)
+   and whether exporting `RUSTFLAGS` is accepted or interferes with `mach` build orchestration.
+2. **Empirical resource measurement:** All disk (~45-55 GB), RAM (~6-7.5 GB), and time (~50-75 min)
+   estimates are recorded strictly as planning estimates and must be measured empirically on the first
+   approved run.
+
+**Why:** Avoids premature multi-gigabyte downloads and prevents long compilation aborts caused by
+invalid mozconfig flags on a constrained-disk system (~86 GB free).
+
+**Spec reference:** Part 16, Part 18 (Phase 1b).

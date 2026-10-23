@@ -37,6 +37,31 @@ body {
   gap: 12px;
 }
 
+/* Placeholder Notice Banner */
+.placeholder-notice {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid #F59E0B;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #FCD34D;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.notice-tag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #F59E0B;
+}
+
+.notice-text strong {
+  color: #FDE68A;
+}
+
 /* Header */
 .header {
   display: flex;
