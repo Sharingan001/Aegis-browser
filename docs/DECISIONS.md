@@ -149,7 +149,26 @@ cannot be enforced by these preferences alone within a single Gecko instance.
 unmodified, but Parts 5.1, 5.2, and 6.1 are flagged as requiring architectural amendment once
 SPIKE-005 is decided.
 
-**Spec references:** Parts 5.1, 5.2, 6.1.
+## D-009 — 2026-10-23 — Phase 0 Approval and Carried-Forward Items
+
+**Decision:** Phase 0 is approved. Four items are carried forward and resolved immediately
+as part of completing Phase 0 wrap-up:
+1. **CI Activation:** Activate the GitHub Actions workflow (.github/workflows/ci.yml)
+   for unit tests and static checks only (no live browser runtime). Verify the initial run.
+2. **Build Guide Reproducibility:** Dry-run docs/BUILD.md Part A in an isolated test directory,
+   identify missing prerequisites or unstated assumptions, and amend BUILD.md accordingly.
+3. **S3 Profile Isolation as Named Fixture:** The default profile (`profiles/aegis-default`)
+   must not lock JIT or WebAssembly off, as the default experience must remain functional
+   for daily browsing. S3 controls (JIT/WASM disabled) are isolated to a named fixture
+   (`profiles/aegis-s3` or invoked via fixture scripts) used for verification tests.
+4. **Robust JIT Microbenchmark:** Make the JIT enforcement timing test robust by running
+   multiple iterations, computing the median, using a relative ratio threshold against
+   the control profile, and explicitly documenting hardware/system load flakiness boundaries.
+
+**Why:** Ensures reproducible baseline, non-destructive defaults, and deterministic CI.
+
+**Spec references:** Parts 10, 13, 14, 16.
 
 ---
+
 

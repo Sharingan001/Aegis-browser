@@ -43,7 +43,7 @@ INLINE_FIXTURES = {
 </body></html>
 """,
     "/benign/index.html": b"""<!DOCTYPE html>
-<!-- AEGIS TEST FIXTURE: benign/index.html — a clean, ordinary web page -->
+<!-- AEGIS TEST FIXTURE: benign/index.html - a clean, ordinary web page -->
 <html><head><title>Example benign page</title></head>
 <body>
 <h1>Benign test page</h1>
@@ -52,7 +52,7 @@ INLINE_FIXTURES = {
 </body></html>
 """,
     "/http-only/index.html": b"""<!DOCTYPE html>
-<!-- AEGIS TEST FIXTURE: http-only/index.html — served over plain HTTP (no TLS) -->
+<!-- AEGIS TEST FIXTURE: http-only/index.html - served over plain HTTP (no TLS) -->
 <html><head><title>HTTP-only test page</title></head>
 <body>
 <h1>HTTP-only test page</h1>
@@ -62,7 +62,7 @@ INLINE_FIXTURES = {
 """,
     "/phishing-mock/index.html": b"""<!DOCTYPE html>
 <!-- AEGIS TEST FIXTURE: phishing-mock/index.html
-     LABELED MOCK — not real phishing content.
+     LABELED MOCK - not real phishing content.
      Simulates: urgency wording + login form + cross-domain post action.
      This file is used ONLY for offline Link Guard rule testing.
      It must never be used to impersonate a real site. -->
@@ -108,6 +108,18 @@ class FixtureHandler(http.server.BaseHTTPRequestHandler):
             return
 
         self._send(404, "text/plain", b"Not found: " + path.encode())
+
+    def do_POST(self):
+        path = urllib.parse.urlparse(self.path).path
+        if path == "/api/report":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            report_file = FIXTURES_DIR / "output" / "s3_report.json"
+            report_file.parent.mkdir(parents=True, exist_ok=True)
+            report_file.write_bytes(body)
+            self._send(200, "application/json", b'{"status":"ok"}')
+            return
+        self._send(404, "text/plain", b"Not found")
 
     def _guess_type(self, suffix: str) -> str:
         return {

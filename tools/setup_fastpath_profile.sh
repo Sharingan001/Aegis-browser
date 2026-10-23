@@ -1,31 +1,46 @@
 #!/usr/bin/env bash
 # tools/setup_fastpath_profile.sh - Aegis fast-path profile setup
 #
-# Usage: bash tools/setup_fastpath_profile.sh [--launch]
+# Usage:
+#   bash tools/setup_fastpath_profile.sh [--fixture=s3|default] [--launch]
 #
-# This script:
-#   1. Checks that firefox-esr/ exists (the extracted ESR tarball).
-#   2. Validates that the ESR binary version matches upstream/VERSION.
-#   3. Validates policies.json schema before copying.
-#   4. Copies policies.json to firefox-esr/distribution/
-#   5. Copies autoconfig.js to firefox-esr/defaults/pref/
-#   6. Copies aegis.cfg to firefox-esr/
-#   7. Creates profiles/aegis-fastpath if it does not exist.
-#   8. Optionally launches Firefox ESR with --no-remote and the Aegis profile.
+# Profiles created:
+#   - default: profiles/aegis-default (unlocked JIT/WASM, normal browsing)
+#   - s3:      profiles/aegis-s3      (named fixture: locked JIT/WASM off)
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ESR_DIR="$REPO_ROOT/firefox-esr"
-PROFILE_DIR="$REPO_ROOT/profiles/aegis-fastpath"
+FIXTURE="default"
 LAUNCH=0
 
 for arg in "$@"; do
-    [ "$arg" = "--launch" ] && LAUNCH=1
+    case "$arg" in
+        --fixture=s3|--s3)
+            FIXTURE="s3"
+            ;;
+        --fixture=default)
+            FIXTURE="default"
+            ;;
+        --launch)
+            LAUNCH=1
+            ;;
+    esac
 done
+
+if [ "$FIXTURE" = "s3" ]; then
+    PROFILE_DIR="$REPO_ROOT/profiles/aegis-s3"
+    CFG_SRC="$REPO_ROOT/config/axes/surface/s3-fixture.cfg"
+else
+    PROFILE_DIR="$REPO_ROOT/profiles/aegis-default"
+    CFG_SRC="$REPO_ROOT/config/autoconfig/aegis.cfg"
+fi
 
 echo "=== Aegis fast-path setup ==="
 echo "Repo root: $REPO_ROOT"
 echo "ESR dir:   $ESR_DIR"
+echo "Fixture:   $FIXTURE"
+echo "Config:    $CFG_SRC"
 echo "Profile:   $PROFILE_DIR"
 echo ""
 
@@ -51,7 +66,6 @@ PINNED_VERSION=$(cat "$REPO_ROOT/upstream/VERSION" | tr -d '[:space:]')
 echo "ESR binary version: $ACTUAL_VERSION (from '$RAW_VERSION')"
 echo "Pinned version:     $PINNED_VERSION"
 
-# Version match check (strip trailing 'esr' for comparison if needed)
 NORM_ACTUAL="${ACTUAL_VERSION%esr}"
 NORM_PINNED="${PINNED_VERSION%esr}"
 
@@ -71,7 +85,6 @@ if [ ! -f "$POLICY_SRC" ]; then
     exit 1
 fi
 
-# Validate JSON and disallow underscore keys
 if ! python3 -c "
 import json, sys
 try:
@@ -111,10 +124,13 @@ mkdir -p "$AUTOCONFIG_DST_DIR"
 cp "$AUTOCONFIG_SRC" "$AUTOCONFIG_DST_DIR/autoconfig.js"
 echo "Installed: $AUTOCONFIG_DST_DIR/autoconfig.js"
 
-# -- 4. Install aegis.cfg -----------------------------------------------------
-CFG_SRC="$REPO_ROOT/config/autoconfig/aegis.cfg"
+# -- 4. Install selected autoconfig .cfg --------------------------------------
+if [ ! -f "$CFG_SRC" ]; then
+    echo "ERROR: Configuration file $CFG_SRC not found."
+    exit 1
+fi
 cp "$CFG_SRC" "$ESR_DIR/aegis.cfg"
-echo "Installed: $ESR_DIR/aegis.cfg"
+echo "Installed: $CFG_SRC -> $ESR_DIR/aegis.cfg"
 
 # -- 5. Create profile directory ----------------------------------------------
 mkdir -p "$PROFILE_DIR"
@@ -123,14 +139,13 @@ echo "Profile dir: $PROFILE_DIR"
 echo ""
 echo "=== Setup complete ==="
 echo ""
-echo "To verify policies are applied, launch with:"
+echo "To verify, launch with:"
 echo "  $FIREFOX_BIN -profile $PROFILE_DIR --no-remote"
-echo "Then navigate to about:policies and about:config."
 echo ""
 
 # -- 6. Optional launch -------------------------------------------------------
 if [ "$LAUNCH" -eq 1 ]; then
-    echo "Launching Firefox ESR with Aegis fast-path profile..."
+    echo "Launching Firefox ESR with profile $PROFILE_DIR..."
     "$FIREFOX_BIN" -profile "$PROFILE_DIR" --no-remote &
-    echo "Firefox ESR launched (PID $!). Check about:policies to verify."
+    echo "Firefox ESR launched (PID $!)."
 fi

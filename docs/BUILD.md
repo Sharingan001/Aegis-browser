@@ -49,8 +49,8 @@ curl -L -O https://releases.mozilla.org/pub/firefox/releases/153.5.1esr/SHA256SU
 curl -L -O https://releases.mozilla.org/pub/firefox/releases/153.5.1esr/SHA256SUMS.asc
 curl -L -O https://releases.mozilla.org/pub/firefox/releases/153.5.1esr/KEY
 
-# Verify SHA-256
-grep "linux-x86_64/en-US/firefox-153.5.1esr.tar.xz" SHA256SUMS | sha256sum -c
+# Verify SHA-256 (strip path prefix in SHA256SUMS so sha256sum finds the local file)
+grep "linux-x86_64/en-US/firefox-153.5.1esr.tar.xz" SHA256SUMS | sed 's|linux-x86_64/en-US/||' | sha256sum -c
 
 # Import Mozilla's release key and verify signature
 # Signing key fingerprint: verify against Mozilla's security/release signing keys page
@@ -92,12 +92,19 @@ cp config/autoconfig/aegis.cfg firefox-esr/aegis.cfg
 
 ### A4. Create a test profile and launch
 
+Use the helper script to prepare isolated profiles and deploy configuration:
 ```bash
-mkdir -p profiles
+# Set up the default profile (leaves JIT/WASM enabled):
+bash tools/setup_fastpath_profile.sh
 
-# Launch with isolated profile; do NOT use --no-remote if you want to inspect profiles
-# from outside. Use --no-remote to prevent interfering with system Firefox.
-firefox-esr/firefox -profile profiles/aegis-fastpath --no-remote
+# Or set up the S3 locked-down fixture profile (locks JIT/WASM off):
+bash tools/setup_fastpath_profile.sh --fixture=s3
+
+# Launch isolated default profile:
+firefox-esr/firefox -profile profiles/aegis-default --no-remote
+
+# Or launch S3 fixture profile:
+firefox-esr/firefox -profile profiles/aegis-s3 --no-remote
 ```
 
 ### A5. Verify policies are applied

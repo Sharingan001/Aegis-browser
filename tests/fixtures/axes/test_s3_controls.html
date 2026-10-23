@@ -38,30 +38,55 @@
       report.wasm_detail = "threw: " + e.message;
     }
 
-    // 3. JIT Microbenchmark Timing
-    // A tight loop of arithmetic and function calls that IonMonkey/Baseline JIT compiles in ~1-5ms,
-    // but in pure interpreter takes significantly longer (10-50x slower).
+    // 3. JIT Microbenchmark Timing with Median over 5 runs
+    // Arithmetic loop where Baseline/Ion JIT compiles in ~5-15ms,
+    // while pure bytecode interpreter takes ~80-150ms.
     function fib(n) {
       let a = 0, b = 1;
       for (let i = 0; i < n; i++) {
         let t = a + b;
         a = b;
-        b = t % 1000000;
+        b = (t % 1000000);
       }
       return a;
     }
 
-    const t0 = performance.now();
-    let sum = 0;
-    for (let k = 0; k < 20000; k++) {
-      sum += fib(200);
+    function runIteration() {
+      const t0 = performance.now();
+      let sum = 0;
+      for (let k = 0; k < 20000; k++) {
+        sum += fib(200);
+      }
+      return { duration: performance.now() - t0, sum };
     }
-    const duration = performance.now() - t0;
-    report.jit_bench_ms = Math.round(duration);
-    report.sum = sum;
+
+    const runs = [];
+    let checkSum = 0;
+    for (let r = 0; r < 5; r++) {
+      const it = runIteration();
+      runs.push(it.duration);
+      checkSum = it.sum;
+    }
+
+    // Compute median
+    runs.sort((a, b) => a - b);
+    const medianMs = Math.round(runs[2]);
+
+    report.jit_bench_median_ms = medianMs;
+    report.jit_runs_ms = runs.map(x => Math.round(x));
+    report.sum = checkSum;
 
     console.log("AEGIS_PROBE_RESULT:" + JSON.stringify(report));
     document.getElementById("results").textContent = JSON.stringify(report);
+
+    // Send to local test server if served over HTTP
+    if (location.protocol.startsWith("http")) {
+      fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(report)
+      }).catch(() => {});
+    }
   </script>
 </body>
 </html>

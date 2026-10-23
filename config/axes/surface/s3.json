@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "axis": "surface",
+  "id": "S3",
+  "name": "Strict",
+  "extends": "S2",
+  "controls": [
+    {
+      "id": "js.jit",
+      "mechanism": "autoconfig",
+      "set": {
+        "javascript.options.baselinejit": false,
+        "javascript.options.ion": false
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_s3_runtime.py"
+      },
+      "user_cost": "Slower script-heavy pages"
+    },
+    {
+      "id": "js.wasm",
+      "mechanism": "autoconfig",
+      "set": {
+        "javascript.options.wasm": false
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_s3_runtime.py"
+      },
+      "user_cost": "WebAssembly applications fail to run"
+    },
+    {
+      "id": "gfx.webgl",
+      "mechanism": "policy",
+      "set": {
+        "webgl.disabled": true
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_s3_runtime.py"
+      },
+      "user_cost": "WebGL and 3D graphics disabled"
+    }
+  ],
+  "compat_notes": [
+    "Maps, 3D games, and complex WebAssembly web applications will not function"
+  ],
+  "fingerprint_visible": true
+}
