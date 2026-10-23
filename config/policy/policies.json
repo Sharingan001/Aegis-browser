@@ -13,18 +13,6 @@
       "Locked": true
     },
     "Preferences": {
-      "javascript.options.baselinejit": {
-        "Value": false,
-        "Status": "locked"
-      },
-      "javascript.options.ion": {
-        "Value": false,
-        "Status": "locked"
-      },
-      "javascript.options.wasm": {
-        "Value": false,
-        "Status": "locked"
-      },
       "webgl.disabled": {
         "Value": true,
         "Status": "locked"

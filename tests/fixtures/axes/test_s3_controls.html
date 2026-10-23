@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Aegis S3 Surface Enforcement Test</title>
+</head>
+<body>
+  <h1>Aegis S3 Verification Probe</h1>
+  <div id="results"></div>
+
+  <script>
+    const report = {};
+
+    // 1. WebGL Check
+    try {
+      const canvas = document.createElement("canvas");
+      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      report.webgl_null = (gl === null);
+    } catch (e) {
+      report.webgl_null = true;
+      report.webgl_error = e.toString();
+    }
+
+    // 2. WebAssembly Check
+    try {
+      if (typeof WebAssembly === "undefined") {
+        report.wasm_disabled = true;
+        report.wasm_detail = "WebAssembly is undefined";
+      } else {
+        // Test minimal 8-byte wasm module header: \0asm\1\0\0\0
+        const bytes = new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]);
+        const valid = WebAssembly.validate(bytes);
+        report.wasm_disabled = !valid;
+        report.wasm_detail = "validate() = " + valid;
+      }
+    } catch (e) {
+      report.wasm_disabled = true;
+      report.wasm_detail = "threw: " + e.message;
+    }
+
+    // 3. JIT Microbenchmark Timing
+    // A tight loop of arithmetic and function calls that IonMonkey/Baseline JIT compiles in ~1-5ms,
+    // but in pure interpreter takes significantly longer (10-50x slower).
+    function fib(n) {
+      let a = 0, b = 1;
+      for (let i = 0; i < n; i++) {
+        let t = a + b;
+        a = b;
+        b = t % 1000000;
+      }
+      return a;
+    }
+
+    const t0 = performance.now();
+    let sum = 0;
+    for (let k = 0; k < 20000; k++) {
+      sum += fib(200);
+    }
+    const duration = performance.now() - t0;
+    report.jit_bench_ms = Math.round(duration);
+    report.sum = sum;
+
+    console.log("AEGIS_PROBE_RESULT:" + JSON.stringify(report));
+    document.getElementById("results").textContent = JSON.stringify(report);
+  </script>
+</body>
+</html>

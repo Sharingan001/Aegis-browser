@@ -125,3 +125,31 @@ deferred until the owner sets up a remote repository.
 **Open questions:** owner to decide when to enable the GitHub Actions workflow.
 
 ---
+
+## D-008 — 2026-10-23 — Instance-wide scope of autoconfig & locked prefs vs per-Cell Surface levels
+
+**Decision:** Document that autoconfig (`aegis.cfg`) and Firefox locked preferences operate
+at the instance/process level. Because autoconfig files reside in the application directory
+shared by all profiles using that binary, and engine preferences (`javascript.options.baselinejit`,
+`ion`, `wasm`) are global process-wide primitives in Gecko, per-Cell Surface levels (S1–S4)
+cannot be enforced by these preferences alone within a single Gecko instance.
+
+**Options for Phase 2 spike (SPIKE-005):**
+1. **Separate instance per surface tier:** Launch an isolated process per active S level
+   (e.g., S3 instance with JIT disabled, S1 instance with JIT enabled).
+2. **Per-profile autoconfig:** Key autoconfig logic to an environment variable or profile
+   file. (Requires verifying `VERIFY-S-022`: check whether `getenv` or profile path inspection
+   is permitted in the autoconfig sandbox).
+3. **Tor-Browser-style global level with restart:** Security level applies globally with
+   restart prompt upon change.
+4. **Engine patch:** Patch SpiderMonkey / Gecko runtime to evaluate JIT/WASM policy per
+   browsing context or container rather than process-wide flags.
+
+**Status:** Marked as an open design spike for early Phase 2. The specification text remains
+unmodified, but Parts 5.1, 5.2, and 6.1 are flagged as requiring architectural amendment once
+SPIKE-005 is decided.
+
+**Spec references:** Parts 5.1, 5.2, 6.1.
+
+---
+
