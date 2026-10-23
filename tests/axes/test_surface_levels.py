@@ -313,5 +313,50 @@ class TestSurfaceLevels(unittest.TestCase):
         self.assertEqual(empty_tests, [], f"Test methods lacking assertions: {empty_tests}")
 
 
+    def test_marionette_remote_debugging_guard(self):
+        """Guard: Marionette/remote debugging must be enabled ONLY by test flags, never by config or setup scripts."""
+        # 1. Config scan: no file in config/ may mention or enable marionette/remote debugging
+        config_dir = REPO_ROOT / "config"
+        for root, dirs, files in os.walk(config_dir):
+            for f in files:
+                p = pathlib.Path(root) / f
+                content = p.read_text(encoding="utf-8", errors="ignore")
+                self.assertNotIn("marionette.enabled", content, f"marionette.enabled must not be set in {p}")
+                self.assertNotIn("marionette.port", content, f"marionette.port must not be set in {p}")
+                self.assertNotIn("--marionette", content, f"--marionette flag must not be in {p}")
+
+        # 2. setup_fastpath_profile.sh scan: must never configure or enable marionette
+        setup_sh = REPO_ROOT / "tools" / "setup_fastpath_profile.sh"
+        self.assertTrue(setup_sh.is_file())
+        sh_content = setup_sh.read_text(encoding="utf-8")
+        self.assertNotIn("marionette", sh_content.lower(), "tools/setup_fastpath_profile.sh must not reference marionette")
+        self.assertNotIn("remote-debugging", sh_content.lower(), "tools/setup_fastpath_profile.sh must not reference remote-debugging")
+
+        # 3. Runtime default launch test: launching without --marionette must NOT open port 2828
+        prof = tempfile.mkdtemp(prefix="aegis_guard_no_marionette_")
+        cmd = [str(ESR_BIN), "-profile", prof, "--no-remote", "--headless", "about:blank"]
+        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(2)
+
+        s = socket.socket()
+        connected = False
+        try:
+            s.connect(("127.0.0.1", 2828))
+            connected = True
+        except (ConnectionRefusedError, socket.timeout, OSError):
+            connected = False
+        finally:
+            s.close()
+            proc.terminate()
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            subprocess.run(["rm", "-rf", prof])
+
+        self.assertFalse(connected, "Marionette must strictly NOT be open or listening on default launch without CLI test flags")
+
+
 if __name__ == "__main__":
     unittest.main()
+

@@ -44,14 +44,21 @@ We conducted empirical runtime probes against the running Firefox ESR 153.5.1esr
   * **Result:** **VERIFIED EFFECTIVE.**
     * Launched with `AEGIS_SURFACE_TIER=S3`: DOM probe reported `wasm_disabled: true` ("WebAssembly is undefined") and interpreter median 103 ms.
     * Launched with `AEGIS_SURFACE_TIER=S1`: DOM probe reported `wasm_disabled: false` (`validate() = true`) and JIT median 27 ms.
-* **Probe 2 (Profile directory file inspection):**
-  ```javascript
-  var profDir = Services.dirsvc.get("ProfD", Components.interfaces.nsIFile);
-  var tierFile = profDir.clone();
-  tierFile.append("aegis-surface-tier.txt");
-  // read file contents via nsIFileInputStream
-  ```
-  * **Result:** **VERIFIED EFFECTIVE.** Successfully read profile-local configuration and locked preferences accordingly.
+* **Probe 2 (Profile directory file inspection vs. native sandbox `getPref`):**
+  * **Initial Spike Report (Flawed Hypothesis):**
+    ```javascript
+    var profDir = Services.dirsvc.get("ProfD", Components.interfaces.nsIFile);
+    var tierFile = profDir.clone();
+    tierFile.append("aegis-surface-tier.txt");
+    // read file contents via nsIFileInputStream
+    ```
+    *Correction:* In the initial fast-path spike test, `AEGIS_SURFACE_TIER=S3` was also present in the environment. Because `getenv("AEGIS_SURFACE_TIER")` evaluated first and applied the S3 locks, and because `try...catch` swallowed the `ReferenceError: Services is not defined`, the initial test erroneously recorded Probe 2 as verified.
+  * **Empirical Engine Finding:** In Firefox ESR 153.5.1esr with `general.config.sandbox_enabled: true`, Mozilla strictly isolates the autoconfig sandbox from XPCOM: `typeof Services === 'undefined'` and `typeof Components === 'undefined'`. Direct filesystem access via XPCOM is impossible without disabling sandbox security.
+  * **Verified Working Solution (`getPref`):** Mozilla's autoconfig sandbox exposes native preference functions (`getPref`, `defaultPref`, `lockPref`, `getenv`). Because Gecko reads and populates preferences from the profile's `user.js` *before* evaluating `aegis.cfg`, a profile-specific tier token can be read natively and safely:
+    ```javascript
+    var profTier = getPref("aegis.profile.tier");
+    ```
+    * **Result:** **VERIFIED EFFECTIVE.** Proven at runtime with zero environment variable present (`test_profile_only_tier_without_env_var`). S3 profile locks JIT/WASM off while S1 profile leaves them enabled.
 
 ### 2.3 Test C: Container (`contextualIdentity`) & Proxy Behavior for the N Axis
 * **Mechanism:** Multi-Account Containers partition client-side storage (cookies, localStorage, indexedDB, cache).

@@ -6,6 +6,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PASS=0
+SKIPPED=0
 FAIL=0
 ERRORS=()
 
@@ -211,24 +212,23 @@ for tier in s1 s2 s3 s4; do
     fi
 done
 
-# Run unit and runtime tests
-if [ -f "$REPO_ROOT/tests/axes/test_surface_levels.py" ] && [ -f "$REPO_ROOT/tests/axes/test_tier_failclosed.py" ]; then
+if [ "$SURF_OK" -eq 0 ]; then
+    FAIL=$((FAIL + 1))
+elif [ ! -f "$REPO_ROOT/firefox-esr/firefox" ]; then
+    echo "SKIPPED (requires firefox-esr): Firefox ESR binary not found at firefox-esr/firefox"
+    SKIPPED=$((SKIPPED + 1))
+elif [ -f "$REPO_ROOT/tests/axes/test_surface_levels.py" ] && [ -f "$REPO_ROOT/tests/axes/test_tier_failclosed.py" ]; then
     if python3 -m unittest tests/axes/test_surface_levels.py tests/axes/test_tier_failclosed.py -v 2>&1; then
         echo "PASS: Phase 2a Surface levels (S1..S4) and fail-closed tier tests passed"
+        PASS=$((PASS + 1))
     else
         echo "FAIL: Phase 2a Surface level tests failed"
         ERRORS+=("Phase 2a Surface level tests failed")
-        SURF_OK=0
+        FAIL=$((FAIL + 1))
     fi
 else
     echo "FAIL: Surface level test files missing"
     ERRORS+=("Surface level test files missing")
-    SURF_OK=0
-fi
-
-if [ "$SURF_OK" -eq 1 ]; then
-    PASS=$((PASS + 1))
-else
     FAIL=$((FAIL + 1))
 fi
 
@@ -237,6 +237,7 @@ echo ""
 # -- Summary ------------------------------------------------------------------
 echo "=== Summary ==="
 echo "PASS: $PASS"
+echo "SKIPPED: $SKIPPED"
 echo "FAIL: $FAIL"
 if [ ${#ERRORS[@]} -gt 0 ]; then
     echo "Issues:"

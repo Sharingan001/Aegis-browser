@@ -55,6 +55,9 @@ class TestTierFailClosed(unittest.TestCase):
                 f.unlink()
 
     def _run_browser_probe(self, env_tier=None, profile_tier=None):
+        for f in [REPORT_FILE, BEACON_FILE]:
+            if f.exists():
+                f.unlink()
         prof_dir = tempfile.mkdtemp(prefix="aegis_failclosed_")
         if profile_tier:
             with open(os.path.join(prof_dir, "aegis-surface-tier.txt"), "w") as f:
@@ -124,6 +127,22 @@ class TestTierFailClosed(unittest.TestCase):
         self.assertTrue(res["script_report"].get("js_enabled"))
         self.assertIsNone(res["noscript_beacon"], "Noscript beacon must not trigger on S1")
 
+    def test_profile_only_tier_without_env_var(self):
+        """Profile tier setting (user.js) must be read via getPref in aegis.cfg when env var is unset."""
+        # 1. Profile specifies S1 with NO environment variable
+        res_s1 = self._run_browser_probe(env_tier=None, profile_tier="S1")
+        self.assertIsNotNone(res_s1["script_report"], "S1 profile without env var must execute JavaScript")
+        self.assertTrue(res_s1["script_report"].get("js_enabled"))
+        self.assertTrue(res_s1["script_report"].get("wasm_present"))
+        self.assertTrue(res_s1["script_report"].get("webgl_present"))
+        self.assertIsNone(res_s1["noscript_beacon"])
+
+        # 2. Profile specifies S4 with NO environment variable
+        res_s4 = self._run_browser_probe(env_tier=None, profile_tier="S4")
+        self.assertIsNone(res_s4["script_report"], "S4 profile without env var must NOT execute JavaScript")
+        self.assertIsNotNone(res_s4["noscript_beacon"], "S4 profile without env var must trigger noscript beacon")
+
 
 if __name__ == "__main__":
     unittest.main()
+
