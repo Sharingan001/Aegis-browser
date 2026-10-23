@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "axis": "identity",
+  "id": "I2",
+  "name": "Uniform",
+  "extends": "I3",
+  "controls": [
+    {
+      "id": "fp.resist_fingerprinting",
+      "mechanism": "autoconfig",
+      "set": {
+        "privacy.resistFingerprinting": true
+      },
+      "locked": true,
+      "override_of": "I3",
+      "override_reason": "Enable RFP uniform spoofing (UTC timezone, rounded viewport, ~16.67ms timer clamping, unmeasured resemblance)",
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "UTC timezone, unmeasured uniform cluster, letterboxed display margins"
+    },
+    {
+      "id": "fp.letterboxing",
+      "mechanism": "autoconfig",
+      "set": {
+        "privacy.resistFingerprinting.letterboxing": true
+      },
+      "locked": true,
+      "override_of": "I3",
+      "override_reason": "Enable letterboxing margins to prevent window geometry fingerprinting",
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "Window content stepped to standardized stepped aspect ratios"
+    },
+    {
+      "id": "fp.protection",
+      "mechanism": "autoconfig",
+      "set": {
+        "privacy.fingerprintingProtection": false
+      },
+      "locked": true,
+      "override_of": "I3",
+      "override_reason": "RFP replaces FPP as the primary fingerprint defense in uniform mode",
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "Replaces site-keyed noise with uniform constant spoofing"
+    }
+  ],
+  "compat_notes": [
+    "Breaks timezone-dependent web applications; triggers bot checks on sensitive login portals"
+  ],
+  "fingerprint_visible": true
+}

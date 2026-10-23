@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "axis": "identity",
+  "id": "I3",
+  "name": "Site-Keyed Noise",
+  "extends": "I1",
+  "controls": [
+    {
+      "id": "fp.protection",
+      "mechanism": "autoconfig",
+      "set": {
+        "privacy.fingerprintingProtection": true
+      },
+      "locked": true,
+      "override_of": "I1",
+      "override_reason": "Enable Gecko FPP site-keyed canvas noise and font visibility protections (D-012, A-002)",
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "Deterministic canvas perturbation injected per eTLD+1 site"
+    },
+    {
+      "id": "net.referer_trimming",
+      "mechanism": "autoconfig",
+      "set": {
+        "network.http.referer.trimmingPolicy": 2
+      },
+      "locked": true,
+      "override_of": "I1",
+      "override_reason": "Trim cross-origin referrers to origin only",
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "Full URL path stripped from cross-origin Referer headers"
+    },
+    {
+      "id": "webrtc.ice_no_host",
+      "mechanism": "autoconfig",
+      "set": {
+        "media.peerconnection.ice.no_host": true
+      },
+      "locked": true,
+      "override_of": "I1",
+      "override_reason": "Prevent local host IP exposure via WebRTC candidates",
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "WebRTC peer connections cannot query local interface IPs"
+    }
+  ],
+  "compat_notes": [
+    "High web compatibility: preserves local timezone, display dimensions, and WebGL capabilities"
+  ],
+  "fingerprint_visible": true
+}

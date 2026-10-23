@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "axis": "identity",
+  "id": "I1",
+  "name": "Native",
+  "extends": null,
+  "controls": [
+    {
+      "id": "fp.protection",
+      "mechanism": "autoconfig",
+      "set": {
+        "privacy.fingerprintingProtection": false
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "Native fingerprinting baseline exposed without perturbation"
+    },
+    {
+      "id": "fp.protection.remote_overrides",
+      "mechanism": "autoconfig",
+      "set": {
+        "privacy.fingerprintingProtection.remoteOverrides.enabled": false
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "Remote override telemetry disabled (Hard Rule 7, D-012)"
+    },
+    {
+      "id": "fp.protection.overrides",
+      "mechanism": "autoconfig",
+      "set": {
+        "privacy.fingerprintingProtection.overrides": ""
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "Default FPP target set"
+    },
+    {
+      "id": "fp.resist_fingerprinting",
+      "mechanism": "autoconfig",
+      "set": {
+        "privacy.resistFingerprinting": false
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "RFP uniform spoofing disabled"
+    },
+    {
+      "id": "fp.letterboxing",
+      "mechanism": "autoconfig",
+      "set": {
+        "privacy.resistFingerprinting.letterboxing": false
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "Letterboxing margins disabled"
+    },
+    {
+      "id": "net.referer_trimming",
+      "mechanism": "autoconfig",
+      "set": {
+        "network.http.referer.trimmingPolicy": 0
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "Default full URL referrer policy"
+    },
+    {
+      "id": "webrtc.ice_no_host",
+      "mechanism": "autoconfig",
+      "set": {
+        "media.peerconnection.ice.no_host": false
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "WebRTC can query host candidate IPs"
+    },
+    {
+      "id": "dom.gamepad",
+      "mechanism": "autoconfig",
+      "set": {
+        "dom.gamepad.enabled": true
+      },
+      "locked": false,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "Gamepad API enabled"
+    }
+  ],
+  "compat_notes": [
+    "Native browser identity without fingerprint masking or noise"
+  ],
+  "fingerprint_visible": false
+}

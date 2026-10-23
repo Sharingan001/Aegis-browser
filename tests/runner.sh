@@ -253,6 +253,39 @@ fi
 
 echo ""
 
+# -- 11. Phase 2c Identity Levels & FPP Override Runtime Tests ---------------
+echo "--- [11] Phase 2c Identity Levels & FPP Override Runtime Tests ---"
+ID_OK=1
+for level in i1 i2 i3 i4; do
+    if [ ! -f "$REPO_ROOT/config/axes/identity/${level}.json" ]; then
+        echo "FAIL: config/axes/identity/${level}.json missing"
+        ERRORS+=("identity/${level}.json missing")
+        ID_OK=0
+    fi
+done
+
+if [ "$ID_OK" -eq 0 ]; then
+    FAIL=$((FAIL + 1))
+elif [ ! -f "$REPO_ROOT/firefox-esr/firefox" ]; then
+    echo "SKIPPED (requires firefox-esr): Firefox ESR binary not found at firefox-esr/firefox"
+    SKIPPED=$((SKIPPED + 1))
+elif [ -f "$REPO_ROOT/tests/axes/test_identity_levels.py" ]; then
+    if python3 -m unittest tests/axes/test_identity_levels.py -v 2>&1; then
+        echo "PASS: Phase 2c Identity levels (I1..I4) and FPP override tests passed"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: Phase 2c Identity level tests failed"
+        ERRORS+=("Phase 2c Identity level tests failed")
+        FAIL=$((FAIL + 1))
+    fi
+else
+    echo "FAIL: tests/axes/test_identity_levels.py missing"
+    ERRORS+=("tests/axes/test_identity_levels.py missing")
+    FAIL=$((FAIL + 1))
+fi
+
+echo ""
+
 # -- Summary ------------------------------------------------------------------
 echo "=== Summary ==="
 echo "PASS: $PASS"

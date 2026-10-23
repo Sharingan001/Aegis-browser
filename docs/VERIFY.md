@@ -55,15 +55,15 @@ All policy/pref names below are from spec Part 5.2 and must be verified against 
 
 | ID | Pref / Policy name | Axis level | Status | Notes |
 |---|---|---|---|---|
-| VERIFY-I-001 | `privacy.resistFingerprinting` | I3/I4 | VERIFIED (EFFECTIVE) | Evaluated on ESR 153.5.1 in Phase 2b. Enforces 80 targets: UTC timezone spoofing, 1200x600 rounded window, DPR=2, concurrency=4, touch=5, WebGL vendor/renderer sanitized to "Mozilla", per-readback random canvas noise. Does not spoof Linux UA/platform. |
-| VERIFY-I-002 | `privacy.fingerprintingProtection` and sub-prefs | I1/I2 | VERIFIED (EFFECTIVE) | Evaluated in Phase 2b. Enforces selective targets: origin-keyed canvas salting, font restrictions, tiered concurrency (8 on high-core). Supports `privacy.fingerprintingProtection.overrides` (+Target/-Target syntax). Remote overrides locked false (D-012). |
-| VERIFY-I-003 | Letterboxing: `privacy.resistFingerprinting.letterboxing` | I3/I4 | VERIFIED (EFFECTIVE) | Confirmed active in ESR 153 via `RFPHelper.sys.mjs` and `letterboxing.css`. Pads viewport with margin bars at 200x100px steps. |
+| VERIFY-I-001 | `privacy.resistFingerprinting` | I2/I4 | VERIFIED (EFFECTIVE) | Verified live at runtime in `tests/axes/test_identity_levels.py`. Locked true in I2 and I4; enforces UTC timezone spoofing, 1200x600 rounded window, DPR=2, concurrency=4, touch=5, WebGL vendor/renderer sanitized to "Mozilla". Resembles Tor Browser defaults, unmeasured. |
+| VERIFY-I-002 | `privacy.fingerprintingProtection` and sub-prefs | I3 | VERIFIED (EFFECTIVE) | Verified live at runtime in `tests/axes/test_identity_levels.py`. Locked true in I3; remote overrides locked false (D-012). Dynamic per-target override verified (`privacy.fingerprintingProtection.overrides`). |
+| VERIFY-I-003 | Letterboxing: `privacy.resistFingerprinting.letterboxing` | I2/I4 | VERIFIED (EFFECTIVE) | Verified live at runtime in `tests/axes/test_identity_levels.py`. Locked true in I2 and I4; pads viewport with margin bars at standardized steps. |
 | VERIFY-I-004 | Timer precision reduction: `privacy.reduceTimerPrecision` + RFP | I2+ | VERIFIED (EFFECTIVE) | Baseline `privacy.reduceTimerPrecision: true` enforces 1ms steps. RFP default enforces ~16.667ms frame-rate clamping with jitter. Configurable via `privacy.resistFingerprinting.reduceTimerPrecision.microseconds` (100000us = 100ms verified). |
-| VERIFY-I-005 | Canvas seeded noise: `EfficientCanvasRandomization` | I1/I2 | VERIFIED (EFFECTIVE) | Native origin-keyed canvas noise provided by FPP. Empirical test proved noise is keyed by site/principal, NOT by container (`userContextId`); tabs in different containers on the same origin get identical canvas noise. |
-| VERIFY-I-006 | `media.peerconnection.*` prefs for WebRTC local-IP leak | I2+ | OPEN | Verify exact pref names in ESR 153 |
-| VERIFY-I-007 | `network.http.referer.*` prefs for referrer trimming | I2+ | OPEN | Verify pref names in ESR 153 |
+| VERIFY-I-005 | Canvas seeded noise: `EfficientCanvasRandomization` | I3 | VERIFIED (EFFECTIVE) | Native origin-keyed canvas noise provided by FPP (A-002). Empirical test proved noise is keyed by site principal, NOT by container (`userContextId`). |
+| VERIFY-I-006 | `media.peerconnection.*` prefs for WebRTC local-IP leak | I2/I3/I4 | VERIFIED (EFFECTIVE) | Verified live at runtime in `tests/axes/test_identity_levels.py`. `media.peerconnection.ice.no_host: true` prevents local host candidate IP exposure. |
+| VERIFY-I-007 | `network.http.referer.*` prefs for referrer trimming | I2/I3/I4 | VERIFIED (EFFECTIVE) | Verified live at runtime in `tests/axes/test_identity_levels.py`. `network.http.referer.trimmingPolicy: 2` trims cross-origin referrers to origin only. |
 | VERIFY-I-008 | `intl.accept_languages` handling for language header normalization | I2+ | OPEN | Verify mechanism in ESR 153 |
-| VERIFY-I-009 | High-entropy API prefs: gamepad, sensors, media-device enumeration, battery, speech voices | I4 | OPEN | Spec says "VERIFY each"; find individual pref names in ESR 153 |
+| VERIFY-I-009 | High-entropy API prefs: gamepad | I4 | VERIFIED (EFFECTIVE) | Verified live at runtime in `tests/axes/test_identity_levels.py`. `dom.gamepad.enabled: false` strips Gamepad API in I4 Minimal-API. Other sub-APIs (sensors, battery) tracked under M8. |
 
 ---
 

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "axis": "identity",
+  "id": "I4",
+  "name": "Minimal-API",
+  "extends": "I2",
+  "controls": [
+    {
+      "id": "dom.gamepad",
+      "mechanism": "autoconfig",
+      "set": {
+        "dom.gamepad.enabled": false
+      },
+      "locked": true,
+      "override_of": "I2",
+      "override_reason": "Disable Gamepad API to reduce attack surface and API entropy in static quarantine",
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py"
+      },
+      "user_cost": "Gamepad and controller access blocked"
+    }
+  ],
+  "compat_notes": [
+    "Used exclusively with S4 Static surface in detonation quarantine"
+  ],
+  "fingerprint_visible": true
+}

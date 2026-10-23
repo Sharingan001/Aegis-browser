@@ -1,8 +1,8 @@
-# Specification Coverage: Part 5.2 (Axis S - Surface Levels)
+# Specification Coverage: Part 5.2 (Surface Levels) and Part 5.3 (Identity Levels)
 
-**Document Version:** 1.1.0  
-**Date:** 2026-10-23  
-**Status:** Living Verification Matrix (Phase 2a Corrected)  
+**Document Version:** 1.2.0  
+**Date:** 2026-10-24  
+**Status:** Living Verification Matrix (Phase 2c Complete)  
 **Target Engine:** Mozilla Firefox ESR 153.5.1esr (Linux x86_64)
 
 ---
@@ -41,9 +41,31 @@ Every row in Spec Part 5.2 is graded against exactly one of four rigorous verifi
 
 ---
 
-## 3. Quantitative Summary by Status
-* **Total Controls in Part 5.2:** 17
-* **Behavior-tested:** 4 (JIT compilers, WebAssembly, WebGL, JavaScript S4 lockout)
-* **Pref verified live:** 2 (HTTPS-only, Autoplay)
-* **Config only:** 4 (Mixed content blocked, Cookie partitioning, Risky font rendering, Remote fonts)
-* **Not yet:** 7 (HTTPS-first upgrade, Permission matrix, Protocol handlers, Downloads, Persistent storage, Extensions, Link Guard browser integration)
+## 3. Part 5.3 Identity Controls Status (Phase 2c)
+
+| Row | Control Name | Target Levels | Implementation Mechanism | Status | Test / Verification Method & Honest Assessment |
+| :---: | :--- | :---: | :--- | :---: | :--- |
+| **I-1** | Fingerprinting protection baseline | I1: off<br/>I3: FPP on<br/>I2/I4: RFP on | `privacy.fingerprintingProtection`, `privacy.resistFingerprinting` | **Behavior-tested** | `test_i1_runtime_enforcement`, `test_i2_runtime_enforcement`, `test_i3_runtime_enforcement`, `test_i4_runtime_enforcement` verify engine state. Phase 2b behavioral probe proved canvas/audio differences. |
+| **I-2** | Remote overrides lockout | I1: off<br/>I3..I4: false | `privacy.fingerprintingProtection.remoteOverrides.enabled` | **Pref verified live** | `test_i3_runtime_enforcement` verifies remoteOverrides locked false in Marionette live query. |
+| **I-3** | Timezone / locale / window geometry | I1: native<br/>I3: native (local TZ)<br/>I2/I4: UTC & letterbox | `privacy.resistFingerprinting`, `privacy.resistFingerprinting.letterboxing` | **Behavior-tested** | Phase 2b live probe confirmed `getTimezoneOffset() == 0` and letterboxing viewport snapping under RFP, and local timezone under FPP. |
+| **I-4** | Timer precision reduction | I1: default<br/>I2..I4: reduced | `privacy.reduceTimerPrecision`, `privacy.resistFingerprinting.reduceTimerPrecision.microseconds` | **Pref verified live** | `test_i2_runtime_enforcement` verifies live clamp to 16667 microseconds under RFP. |
+| **I-5** | Canvas / audio readback | I1: native<br/>I3: site-keyed noise<br/>I2/I4: normalized/constant | FPP canvas randomization (I3), RFP uniform canvas (I2/I4) | **Behavior-tested** | `test_fpp_per_target_override_changes_behavior` proves FPP per-target override switches noise behavior; Phase 2b probe measured canvas hash divergence. |
+| **I-6** | Hardware concurrency & touch points | I1: native<br/>I3: native<br/>I2/I4: normalized | `privacy.resistFingerprinting` | **Behavior-tested** | Phase 2b probe confirmed RFP clamps `hardwareConcurrency: 2` and `maxTouchPoints: 0` (headless ESR 153.5.1). |
+| **I-7** | High-entropy APIs (Gamepad) | I1..I3: on<br/>I4: off | `dom.gamepad.enabled` | **Pref verified live** | `test_i4_runtime_enforcement` verifies `dom.gamepad.enabled` is false in I4 and true in I1..I3. |
+| **I-8** | Referrer policy | I1: default<br/>I2..I4: origin cross-origin | `network.http.referer.trimmingPolicy: 2` | **Pref verified live** | `test_i1_runtime_enforcement` (0) and `test_i3_runtime_enforcement` (2) verify effective prefs live. |
+| **I-9** | WebRTC local IP leak protection | I1: default<br/>I2..I4: no local host IP | `media.peerconnection.ice.no_host: true` | **Pref verified live** | `test_i1_runtime_enforcement` (false) and `test_i3_runtime_enforcement` (true) verify effective prefs live. |
+| **I-10** | Language header normalization | I1: native<br/>I2..I4: normalized | `intl.accept_languages` / RFP | **Config only** | RFP handles language normalization under I2/I4; standalone config check only. |
+
+---
+
+## 4. Quantitative Summary by Status
+* **Part 5.2 Surface Controls (17 total):**
+  - **Behavior-tested:** 4 (JIT compilers, WebAssembly, WebGL, JavaScript S4 lockout)
+  - **Pref verified live:** 2 (HTTPS-only, Autoplay)
+  - **Config only:** 4 (Mixed content blocked, Cookie partitioning, Risky font rendering, Remote fonts)
+  - **Not yet:** 7 (HTTPS-first upgrade, Permission matrix, Protocol handlers, Downloads, Persistent storage, Extensions, Link Guard browser integration)
+* **Part 5.3 Identity Controls (10 total):**
+  - **Behavior-tested:** 4 (FP baseline, Timezone/letterboxing, Canvas/audio overrides, Hardware/touch normalization)
+  - **Pref verified live:** 5 (Remote overrides lockout, Timer precision, High-entropy Gamepad, Referrer trimming, WebRTC no_host)
+  - **Config only:** 1 (Language header normalization)
+  - **Not yet:** 0
