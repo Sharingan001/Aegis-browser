@@ -14,7 +14,7 @@ at https://firefox-source-docs.mozilla.org/ — always against the 153 ESR tag.
 
 | ID | Item | Status | Notes |
 |---|---|---|---|
-| VERIFY-ESR-001 | Firefox ESR current version = 153.5.1 | VERIFIED | Confirmed 2026-10-23 from https://www.mozilla.org/en-US/firefox/organizations/all/ (`data-esr-versions="153.5.1"`). Tarball SHA-256: `e289bdc532decf2b54dea9b5ac64cf6f84a62eeec4d4a9ec2f69590f61b0ff1c` (linux-x86_64/en-US). Signature file: releases.mozilla.org/pub/firefox/releases/153.5.1esr/SHA256SUMS |
+| VERIFY-ESR-001 | Firefox ESR current version = 153.5.1 | VERIFIED | Confirmed 2026-10-23 from Mozilla organizations/all/ (data-esr-versions="153.5.1"). Tarball SHA-256 e289bdc532decf2b54dea9b5ac64cf6f84a62eeec4d4a9ec2f69590f61b0ff1c verified against SHA256SUMS. GPG detached signature SHA256SUMS.asc verified using Mozilla Software Releases key (Primary Fingerprint: 14F2 6682 D091 6CDD 81E3 7B6D 61B7 B526 D98F 0353, Subkey: 827E 6586 0867 9618 CD34 9F93 678E 455D 7676 7AA3). |
 
 ---
 
