@@ -234,6 +234,25 @@ fi
 
 echo ""
 
+# -- 10. Phase 2c Multi-Axis Combination Matrix Tests ------------------------
+echo "--- [10] Phase 2c Multi-Axis Combination Matrix Tests ---"
+if [ -f "$REPO_ROOT/tests/axes/test_tier_matrix.py" ]; then
+    if python3 -m unittest tests.axes.test_tier_matrix -v; then
+        echo "PASS: Multi-axis 4x4x4 combination matrix tests passed (all rules verified)"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: Multi-axis combination matrix tests failed"
+        ERRORS+=("test_tier_matrix failed")
+        FAIL=$((FAIL + 1))
+    fi
+else
+    echo "FAIL: tests/axes/test_tier_matrix.py missing"
+    ERRORS+=("tests/axes/test_tier_matrix.py missing")
+    FAIL=$((FAIL + 1))
+fi
+
+echo ""
+
 # -- Summary ------------------------------------------------------------------
 echo "=== Summary ==="
 echo "PASS: $PASS"

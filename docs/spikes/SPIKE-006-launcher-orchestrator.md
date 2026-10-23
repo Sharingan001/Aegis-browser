@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary & Objectives
 
-Under the Process-Tiered Architecture ([A-001](file:///home/god/Ageis/docs/spec-amendments/A-001.md)), Aegis Browser runs separate Gecko instances for distinct attack-surface and network tiers (Standard S1/N0, Guarded S2/N1, Research S3/N2, Detonation S4/N2). 
+Under the Process-Tiered Architecture ([A-001](../spec-amendments/A-001.md)), Aegis Browser runs separate Gecko instances for distinct attack-surface and network tiers (Standard S1/N0, Guarded S2/N1, Research S3/N2, Detonation S4/N2). 
 
 SPIKE-006 specifies the technical architecture for the **Aegis Orchestrator**—a lightweight, privileged local daemon that supervises instance processes, brokers inter-instance URL hand-offs, manages authenticated local IPC, and maintains an immutable, shared Flight Recorder hash chain.
 

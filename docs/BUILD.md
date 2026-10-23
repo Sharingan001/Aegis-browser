@@ -40,7 +40,7 @@ git --version && python3 --version && curl --version | head -1 && gpg --version 
 > **Requires owner approval before running.**
 
 ```bash
-cd /home/god/Ageis
+cd /path/to/Ageis  # Repository root
 mkdir -p downloads && cd downloads
 
 # Download tarball, checksum file, signature, and signing key into downloads/
@@ -56,7 +56,7 @@ grep "linux-x86_64/en-US/firefox-153.5.1esr.tar.xz" SHA256SUMS | sed 's|linux-x8
 # Signing key fingerprint: verify against Mozilla's security/release signing keys page
 gpg --import KEY
 gpg --verify SHA256SUMS.asc SHA256SUMS
-cd /home/god/Ageis
+cd ..
 ```
 
 Expected sha256sum output: `firefox-153.5.1esr.tar.xz: OK`
@@ -64,7 +64,7 @@ Expected sha256sum output: `firefox-153.5.1esr.tar.xz: OK`
 ### A2. Extract
 
 ```bash
-cd /home/god/Ageis
+# From repository root:
 tar -xJf downloads/firefox-153.5.1esr.tar.xz
 # The archive unpacks to 'firefox/'. Rename to 'firefox-esr/':
 if [ -d "firefox" ] && [ ! -d "firefox-esr" ]; then
@@ -115,7 +115,7 @@ In the running Aegis ESR instance, navigate to `about:policies` to confirm that
 ### A6. Run the test suite
 
 ```bash
-cd /home/god/Ageis/prototypes
+cd prototypes
 python3 -m unittest test_aegis
 ```
 

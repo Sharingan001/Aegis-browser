@@ -103,9 +103,9 @@ fingerprinting protection already provides seeded randomization before building 
 
 ---
 
-## D-006 — 2026-10-23 — Repository root: /home/god/Ageis/
+## D-006 — 2026-10-23 — Repository root: ./ (Ageis)
 
-**Decision:** `/home/god/Ageis/` is the repository root. No rename to `aegis-browser/` is
+**Decision:** The cloned repository directory (`./`) is the repository root. No rename to `aegis-browser/` is
 proposed at this time; the directory name does not affect the build or tests.
 
 **Why:** Owner instruction. Renaming requires explicit approval.
@@ -219,4 +219,30 @@ invalid mozconfig flags on a constrained-disk system (~86 GB free).
 **Why:** Balances daily usability in lower tiers against rigorous Tor-aligned uniformity in strict tiers, honors offline constraints, and grounds architecture in empirical Gecko behavior.
 
 **Spec references:** Parts 5.3, 7.1, 7.3, docs/spec-amendments/A-001.md.
+
+---
+
+## D-013 — 2026-10-24 — Tor Launch Failure Policy (Strict Option A: Refuse to Launch)
+
+**Decision:**
+1. **Strict Fail-Closed on Tor Failure (Option A):** If the Tor daemon is offline, unavailable, unresponsive, or fails connection to the local SOCKS proxy (`127.0.0.1:9050`) at launch or during route initialization, any tier configured for Tor routing (N2 / N3) MUST fail closed and refuse to launch.
+2. **Tor Tier Invariance (A Tor tier must never become non-Tor):** Silent, automatic, or in-place fallback to direct internet access (N0) or clearnet DoH (N1) within the same instance or profile is strictly prohibited. Once an instance is designated as a Tor instance, it is cryptographically and procedurally locked to Tor routing.
+3. **Separate, Explicit Non-Tor Action:** If launch fails due to Tor unavailability, the launcher/orchestrator may offer the user a distinct, explicit user action to open a DIFFERENT, clearly named non-Tor tier (such as Tier 1: Standard or Tier 2: Guarded). This ensures the user consciously acknowledges that they are transitioning from an anonymous onion-routed context to a clearnet-routed context under a completely different profile and identity posture.
+
+**Why:** Prevents catastrophic deanonymization and silent cleartext leaks where sensitive onion links, intelligence sessions, or pseudonym identities are unexpectedly transmitted across cleartext clearnet IP addresses.
+
+**Spec references:** Parts 5.4, 6.1, 7.1, 14, docs/spec-amendments/A-001.md.
+
+---
+
+## D-014 — 2026-10-24 — Dedicated Banking Preset Instance and Extension Isolation Policy
+
+**Decision:**
+1. **Dedicated Banking Preset (`banking`):** Anchored Cells (banking, high-value accounts) are assigned a dedicated preset instance (`banking`: `{S2, I3, N1}`) operating under an isolated profile directory (`profiles/aegis-banking/`).
+2. **Instance-Wide Extension Isolation:** In the Gecko engine, WebExtensions execute process-wide across all containers; Multi-Account Containers (`userContextId`) cannot restrict or disable extension scripts. To satisfy Master Spec Part 5.5 ("extensions off"), the `banking` preset disables extensions instance-wide (`extensions.enabledScopes: 0`), ensuring third-party extensions cannot access banking DOM or intercept credentials.
+3. **On-Demand Concurrency:** Because presets spawn on demand up to the configurable concurrency cap (default: max 4 concurrently running instances), the `banking` preset consumes zero RAM when not actively in use. When active, it provides absolute extension isolation without violating memory safety bounds.
+
+**Why:** Enforces the spec's "extensions off" invariant for sensitive banking while acknowledging engine-level container limitations honestly, and prevents anti-fraud account lockouts via I3 site-keyed noise (Amendment A-003).
+
+**Spec references:** Parts 5.2, 5.5, 6.2, docs/spec-amendments/A-001.md, docs/spec-amendments/A-003.md.
 
