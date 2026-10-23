@@ -24,20 +24,20 @@ All policy/pref names below are from spec Part 5.2 and must be verified against 
 
 | ID | Pref / Policy name | Axis level | Status | Notes |
 |---|---|---|---|---|
-| VERIFY-S-001 | `dom.security.https_only_mode` | S2+ | OPEN | Verify exists and behavior in ESR 153 |
+| VERIFY-S-001 | `dom.security.https_only_mode` | S2+ | VERIFIED (SET via autoconfig) | In aegis.cfg: locked true in S2, S3, S4 tiers. Verified in prefs. |
 | VERIFY-S-002 | `dom.security.https_only_mode_ever_enabled` | S1+ | OPEN | Verify family of prefs |
-| VERIFY-S-003 | `network.cookie.cookieBehavior` (partitioning value) | S1+ | OPEN | Verify correct integer value for dFPI in ESR 153 |
-| VERIFY-S-004 | `media.autoplay.*` prefs (block audible / block all) | S2/S3 | OPEN | Verify correct pref names and values |
+| VERIFY-S-003 | `network.cookie.cookieBehavior` (partitioning value) | S1+ | VERIFIED (SET via autoconfig) | Value 5 (dFPI total cookie protection) locked in aegis.cfg baseline. |
+| VERIFY-S-004 | `media.autoplay.default` | S2/S3 | VERIFIED (SET via autoconfig) | In aegis.cfg: locked 1 (block audible) in S2; locked 5 (block all) in S3/S4. |
 | VERIFY-S-005 | Permission policy prefs (notifications, location, camera, mic) | S2/S3/S4 | OPEN | Verify pref names for default-deny behavior |
 | VERIFY-S-006 | Protocol handler policy | S2+ | OPEN | Verify policy/pref name for dangerous handler blocking |
-| VERIFY-S-007 | `javascript.options.baselinejit` | S3/S4 | VERIFIED (EFFECTIVE via autoconfig) | In policies.json: REJECTED by ESR 153 for stability reasons. In aegis.cfg: VERIFIED EFFECTIVE via lockPref; execution bench showed 105ms vs 10ms control (interpreter fallback). |
+| VERIFY-S-007 | `javascript.options.baselinejit` | S3/S4 | VERIFIED (EFFECTIVE via autoconfig) | In policies.json: REJECTED by ESR 153 for stability reasons. In aegis.cfg: VERIFIED EFFECTIVE via lockPref; execution bench showed 103ms vs 27ms JIT on S1. |
 | VERIFY-S-008 | `javascript.options.ion` | S3/S4 | VERIFIED (EFFECTIVE via autoconfig) | In policies.json: REJECTED by ESR 153 for stability reasons. In aegis.cfg: VERIFIED EFFECTIVE via lockPref. |
-| VERIFY-S-009 | `javascript.options.wasm` | S3/S4 | VERIFIED (EFFECTIVE via autoconfig) | In policies.json: REJECTED by ESR 153 for stability reasons. In aegis.cfg: VERIFIED EFFECTIVE via lockPref; typeof WebAssembly is undefined in DOM. |
-| VERIFY-S-010 | `webgl.disabled` | S3/S4 | VERIFIED (EFFECTIVE via policy) | In policies.json Preferences: ACCEPTED & LOCKED. getContext("webgl") returns null; stderr logs WebGL is currently disabled. |
+| VERIFY-S-009 | `javascript.options.wasm` | S3/S4 | VERIFIED (EFFECTIVE via autoconfig) | In policies.json: REJECTED by ESR 153 for stability reasons. In aegis.cfg: VERIFIED EFFECTIVE via lockPref; typeof WebAssembly is undefined in DOM on S3/S4. |
+| VERIFY-S-010 | `webgl.disabled` | S3/S4 | VERIFIED (EFFECTIVE via policy & autoconfig) | In policies.json & aegis.cfg: ACCEPTED & LOCKED. getContext("webgl") returns null in S3/S4. |
 | VERIFY-S-011 | WebGPU pref name | S3/S4 | OPEN | Spec says "WebGPU pref" - find actual pref name in ESR 153 |
-| VERIFY-S-012 | `gfx.font_rendering.opentype_svg.enabled` | S3/S4 | OPEN | Verify pref name in ESR 153 |
-| VERIFY-S-013 | `mathml.disabled` | S3/S4 | OPEN | Verify pref name in ESR 153 |
-| VERIFY-S-014 | `gfx.downloadable_fonts.enabled` | S4 | OPEN | Verify pref name in ESR 153 |
+| VERIFY-S-012 | `gfx.font_rendering.opentype_svg.enabled` | S3/S4 | VERIFIED (SET via autoconfig) | Locked false in aegis.cfg for S3/S4. |
+| VERIFY-S-013 | `mathml.disabled` | S3/S4 | VERIFIED (SET via autoconfig) | Locked true in aegis.cfg for S3/S4. |
+| VERIFY-S-014 | `gfx.downloadable_fonts.enabled` | S4 | VERIFIED (SET via autoconfig) | Locked false in aegis.cfg for S4 minimal surface. |
 | VERIFY-S-015 | Extension policy (built-in only in S3, none in S4) | S3/S4 | OPEN | Verify enterprise policy key name in ESR 153 |
 | VERIFY-S-016 | Download policy (quarantine, no auto-open) | S3/S4 | OPEN | Verify mechanism in ESR 153 |
 | VERIFY-S-017 | Policy key `HttpsOnlyMode` | S1+ | VERIFIED (SET via policy) | In policies.json: ACCEPTED. about:policies shows HttpsOnlyMode="force_enabled". |
@@ -45,7 +45,9 @@ All policy/pref names below are from spec Part 5.2 and must be verified against 
 | VERIFY-S-019 | Policy key `EnableTrackingProtection` with `Fingerprinting` + `Cryptomining` | all | VERIFIED (SET via policy) | In policies.json: ACCEPTED. about:policies shows EnableTrackingProtection with Value=true, Locked=true. |
 | VERIFY-S-020 | Policy key `DNSOverHTTPS` with `Locked` flag | N1 | VERIFIED (SET via policy) | In policies.json: ACCEPTED. about:policies shows DNSOverHTTPS with Enabled=true, Locked=true. |
 | VERIFY-S-021 | Autoconfig mechanism: `autoconfig.js` + `.cfg` file | all | VERIFIED (EFFECTIVE) | Confirmed functional in ESR 153; successfully applies lockPref calls for prefs restricted by policies.json. |
-| VERIFY-S-022 | Autoconfig sandbox: check whether `getenv` or profile path inspection is available | S-axis | VERIFIED (EFFECTIVE) | Verified on ESR 153 runtime: `getenv('AEGIS_SURFACE_TIER')` and `Components.classes['@mozilla.org/process/environment;1']` work inside aegis.cfg. Reading a tier file from profile directory via `Services.dirsvc.get('ProfD', Components.interfaces.nsIFile)` also works. Proven effective by disabling WASM/JIT conditionally on S3 while keeping S1 enabled. |
+| VERIFY-S-022 | Autoconfig sandbox: check whether `getenv` or profile path inspection is available | S-axis | VERIFIED (EFFECTIVE) | Tested on Firefox ESR 153.5.1esr on Linux x86_64: `getenv('AEGIS_SURFACE_TIER')` and profile inspection work. S3 tier locks JIT/WASM off while S1 keeps them enabled. |
+| VERIFY-S-023 | `javascript.enabled` | S4 | VERIFIED (EFFECTIVE via autoconfig) | Locked false in S4 tier and fail-closed state. Proven effective at runtime via `<noscript>` beacon triggering and zero `<script>` execution. |
+| VERIFY-S-024 | `media.peerconnection.enabled` | S4 | VERIFIED (SET via autoconfig) | Locked false in aegis.cfg for S4 minimal surface. |
 
 ---
 

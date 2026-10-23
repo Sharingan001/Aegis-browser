@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "axis": "surface",
+  "id": "S4",
+  "name": "Static",
+  "extends": "S3",
+  "controls": [
+    {
+      "id": "js.enabled",
+      "mechanism": "autoconfig",
+      "set": {
+        "javascript.enabled": false
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "All client-side JavaScript execution disabled"
+    },
+    {
+      "id": "gfx.downloadable_fonts",
+      "mechanism": "autoconfig",
+      "set": {
+        "gfx.downloadable_fonts.enabled": false
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "Remote web fonts blocked from downloading"
+    },
+    {
+      "id": "webrtc.enabled",
+      "mechanism": "autoconfig",
+      "set": {
+        "media.peerconnection.enabled": false
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "WebRTC completely disabled"
+    }
+  ],
+  "compat_notes": [
+    "Interactive websites unusable; static documents, text, and basic media only"
+  ],
+  "fingerprint_visible": true
+}

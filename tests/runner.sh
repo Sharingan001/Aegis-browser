@@ -191,9 +191,39 @@ fi
 
 echo ""
 
-# -- 9. Placeholder: axis enforcement tests (Phase 2+) -----------------------
-echo "--- [9] Axis enforcement tests (Phase 2+, skipped in Phase 1a) ---"
-echo "SKIP: axis enforcement tests are not yet implemented"
+# -- 9. Phase 2a Surface Levels & Fail-Closed Tier Runtime Tests -------------
+echo "--- [9] Phase 2a Surface Levels & Fail-Closed Tier Runtime Tests ---"
+SURF_OK=1
+
+# Check level files schema
+for tier in s1 s2 s3 s4; do
+    if [ ! -f "$REPO_ROOT/config/axes/surface/${tier}.json" ]; then
+        echo "FAIL: config/axes/surface/${tier}.json missing"
+        ERRORS+=("surface/${tier}.json missing")
+        SURF_OK=0
+    fi
+done
+
+# Run unit and runtime tests
+if [ -f "$REPO_ROOT/tests/axes/test_surface_levels.py" ] && [ -f "$REPO_ROOT/tests/axes/test_tier_failclosed.py" ]; then
+    if python3 -m unittest tests/axes/test_surface_levels.py tests/axes/test_tier_failclosed.py -v 2>&1; then
+        echo "PASS: Phase 2a Surface levels (S1..S4) and fail-closed tier tests passed"
+    else
+        echo "FAIL: Phase 2a Surface level tests failed"
+        ERRORS+=("Phase 2a Surface level tests failed")
+        SURF_OK=0
+    fi
+else
+    echo "FAIL: Surface level test files missing"
+    ERRORS+=("Surface level test files missing")
+    SURF_OK=0
+fi
+
+if [ "$SURF_OK" -eq 1 ]; then
+    PASS=$((PASS + 1))
+else
+    FAIL=$((FAIL + 1))
+fi
 
 echo ""
 

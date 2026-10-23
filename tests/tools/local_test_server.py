@@ -100,6 +100,15 @@ class FixtureHandler(http.server.BaseHTTPRequestHandler):
             self._send(200, ctype, content)
             return
 
+        # Special beacon for noscript detection
+        if path == "/api/noscript_beacon":
+            beacon_file = FIXTURES_DIR / "output" / "noscript_beacon.json"
+            beacon_file.parent.mkdir(parents=True, exist_ok=True)
+            beacon_file.write_text('{"noscript": true}')
+            gif_1x1 = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+            self._send(200, "image/gif", gif_1x1)
+            return
+
         # Fall back to inline
         if path in INLINE_FIXTURES:
             content = INLINE_FIXTURES[path]

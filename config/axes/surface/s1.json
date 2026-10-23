@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "axis": "surface",
+  "id": "S1",
+  "name": "Standard",
+  "extends": null,
+  "controls": [
+    {
+      "id": "net.mixed_content",
+      "mechanism": "autoconfig",
+      "set": {
+        "security.mixed_content.block_active_content": true
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "Insecure mixed active content blocked on HTTPS pages"
+    },
+    {
+      "id": "privacy.partitioning",
+      "mechanism": "autoconfig",
+      "set": {
+        "network.cookie.cookieBehavior": 5
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "Third-party cross-site cookies partitioned (dFPI)"
+    }
+  ],
+  "compat_notes": [
+    "Full standard web platform feature set enabled"
+  ],
+  "fingerprint_visible": false
+}

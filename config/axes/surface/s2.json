@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "axis": "surface",
+  "id": "S2",
+  "name": "Guarded",
+  "extends": "S1",
+  "controls": [
+    {
+      "id": "net.https_only",
+      "mechanism": "autoconfig",
+      "set": {
+        "dom.security.https_only_mode": true
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "Plain HTTP sites require explicit confirmation click"
+    },
+    {
+      "id": "media.autoplay",
+      "mechanism": "autoconfig",
+      "set": {
+        "media.autoplay.default": 1
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "Audible media blocked from autoplaying"
+    },
+    {
+      "id": "webrtc.ice_proxy",
+      "mechanism": "autoconfig",
+      "set": {
+        "media.peerconnection.ice.default_address_only": true
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "WebRTC restricted from querying secondary local network interfaces"
+    }
+  ],
+  "compat_notes": [
+    "Most standard interactive web applications work; plain HTTP requires prompt"
+  ],
+  "fingerprint_visible": false
+}

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Aegis Script Execution Status Probe</title>
+</head>
+<body>
+  <h1>Script Status Probe</h1>
+  <noscript>
+    <img src="/api/noscript_beacon" width="1" height="1" alt="noscript" />
+    <p>JavaScript is disabled.</p>
+  </noscript>
+  <script>
+    fetch('/api/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        js_enabled: true,
+        wasm_present: typeof WebAssembly !== 'undefined',
+        webgl_present: (function() {
+          try {
+            var c = document.createElement('canvas');
+            return !!(c.getContext('webgl') || c.getContext('experimental-webgl'));
+          } catch (e) {
+            return false;
+          }
+        })()
+      })
+    }).catch(function(e) {});
+  </script>
+</body>
+</html>

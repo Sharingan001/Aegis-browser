@@ -15,9 +15,9 @@
       "locked": true,
       "verify": {
         "type": "runtime-check",
-        "test": "tests/axes/test_s3_runtime.py"
+        "test": "tests/axes/test_surface_levels.py"
       },
-      "user_cost": "Slower script-heavy pages"
+      "user_cost": "Slower script-heavy pages (interpreter execution)"
     },
     {
       "id": "js.wasm",
@@ -28,26 +28,52 @@
       "locked": true,
       "verify": {
         "type": "runtime-check",
-        "test": "tests/axes/test_s3_runtime.py"
+        "test": "tests/axes/test_surface_levels.py"
       },
       "user_cost": "WebAssembly applications fail to run"
     },
     {
       "id": "gfx.webgl",
-      "mechanism": "policy",
+      "mechanism": "autoconfig",
       "set": {
         "webgl.disabled": true
       },
       "locked": true,
       "verify": {
         "type": "runtime-check",
-        "test": "tests/axes/test_s3_runtime.py"
+        "test": "tests/axes/test_surface_levels.py"
       },
       "user_cost": "WebGL and 3D graphics disabled"
+    },
+    {
+      "id": "doc.mathml",
+      "mechanism": "autoconfig",
+      "set": {
+        "mathml.disabled": true
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "Native MathML rendering disabled"
+    },
+    {
+      "id": "gfx.font_svg",
+      "mechanism": "autoconfig",
+      "set": {
+        "gfx.font_rendering.opentype_svg.enabled": false
+      },
+      "locked": true,
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_surface_levels.py"
+      },
+      "user_cost": "OpenType-SVG color fonts disabled"
     }
   ],
   "compat_notes": [
-    "Maps, 3D games, and complex WebAssembly web applications will not function"
+    "Maps, 3D graphics, and complex WebAssembly web applications will not function"
   ],
   "fingerprint_visible": true
 }
