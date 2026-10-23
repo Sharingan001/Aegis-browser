@@ -1,0 +1,66 @@
+{
+  "_comment": [
+    "Aegis Browser — Enterprise Policy Skeleton (Phase 0 / Fast Path)",
+    "ALL pref/policy names are marked VERIFY in docs/VERIFY.md.",
+    "This is a SKETCH for fast-path testing only; not a complete level implementation.",
+    "Verify every key name against Firefox ESR 153 policy templates at:",
+    "https://mozilla.github.io/policy-templates/",
+    "before relying on any setting."
+  ],
+  "policies": {
+    "DisableTelemetry": true,
+
+    "HttpsOnlyMode": "force_enabled",
+
+    "EnableTrackingProtection": {
+      "Value": true,
+      "Locked": true,
+      "Fingerprinting": true,
+      "Cryptomining": true
+    },
+
+    "DNSOverHTTPS": {
+      "Enabled": true,
+      "Locked": true,
+      "_comment_VERIFY": "VERIFY-N-004: confirm strict mode pref value for ESR 153; this policy key may not enforce strict (no-fallback) — may need Preferences override too"
+    },
+
+    "Preferences": {
+      "_comment_VERIFY": [
+        "All pref names below are from spec Part 5.2 (S3 sketch).",
+        "VERIFY each pref name and value against ESR 153 about:config before trusting.",
+        "See docs/VERIFY.md VERIFY-S-007 through VERIFY-S-014."
+      ],
+      "javascript.options.baselinejit": {
+        "Value": false,
+        "Status": "locked",
+        "_VERIFY": "VERIFY-S-007"
+      },
+      "javascript.options.ion": {
+        "Value": false,
+        "Status": "locked",
+        "_VERIFY": "VERIFY-S-008"
+      },
+      "javascript.options.wasm": {
+        "Value": false,
+        "Status": "locked",
+        "_VERIFY": "VERIFY-S-009"
+      },
+      "webgl.disabled": {
+        "Value": true,
+        "Status": "locked",
+        "_VERIFY": "VERIFY-S-010"
+      }
+    },
+
+    "_comment_not_yet_set": [
+      "The following are NOT yet set — they require Phase 2 axis implementation:",
+      "- Per-Cell policies",
+      "- S1/S2/S4 level controls",
+      "- I-axis prefs (privacy.resistFingerprinting etc.)",
+      "- Download quarantine",
+      "- Extension airlock",
+      "See docs/VERIFY.md for the full list of pref names to verify."
+    ]
+  }
+}

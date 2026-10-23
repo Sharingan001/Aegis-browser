@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+.eggs/
+
+# Firefox source / build artifacts (will be in upstream/ when added)
+upstream/firefox-*/
+upstream/*.tar.*
+upstream/*.xz
+upstream/obj-*/
+
+# Firefox ESR tarball (downloaded to firefox-esr/ - not in repo, only the extracted dir)
+firefox-esr/
+firefox-esr-*.tar.xz
+firefox-esr-*.tar.xz.asc
+
+# Profile directories used by fast-path testing (never commit a live profile)
+profiles/
+*.profile/
+*.default/
+*.default-release/
+
+# Test artifacts
+tests/fixtures/output/
+tests/crowd-analysis/*.json
+*.lcov
+.coverage
+htmlcov/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/settings.json
+.idea/
+
+# Build output
+*.o
+*.a
+*.so
+*.dylib
+
+# Secrets (should never be here, but belt-and-suspenders)
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.json

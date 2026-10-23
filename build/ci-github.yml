@@ -1,0 +1,58 @@
+name: Aegis CI
+# GitHub Actions workflow — NOT YET ACTIVE
+# Enable by pushing this file to a GitHub repository under .github/workflows/
+# and configuring the repository. Do NOT push yet.
+#
+# This file lives at build/ci-github.yml in the repo.
+# Copy or symlink to .github/workflows/ci.yml when you are ready to enable it.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  unit-tests:
+    name: Prototype unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check prototype files present
+        run: |
+          test -f prototypes/test_aegis.py      || (echo "ERROR: prototypes/test_aegis.py missing" && exit 1)
+          test -f prototypes/aegis_psl.py        || (echo "ERROR: prototypes/aegis_psl.py missing" && exit 1)
+          test -f prototypes/linkguard_prototype.py || (echo "ERROR: prototypes/linkguard_prototype.py missing" && exit 1)
+          test -f prototypes/aegis_modules.py    || (echo "ERROR: prototypes/aegis_modules.py missing" && exit 1)
+
+      - name: Run prototype unit tests (expected: 27 tests OK)
+        run: |
+          cd prototypes
+          python3 -m unittest test_aegis -v
+
+  docs-checks:
+    name: Docs integrity checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Required docs present
+        run: |
+          test -f docs/VERIFY.md    || (echo "ERROR: docs/VERIFY.md missing" && exit 1)
+          test -f docs/DECISIONS.md || (echo "ERROR: docs/DECISIONS.md missing" && exit 1)
+          test -f docs/BUILD.md     || (echo "ERROR: docs/BUILD.md missing" && exit 1)
+          test -f upstream/VERSION  || (echo "ERROR: upstream/VERSION missing" && exit 1)
+          test -f CLAUDE.md         || (echo "ERROR: CLAUDE.md missing" && exit 1)
+
+      - name: Run test runner
+        run: bash tests/runner.sh

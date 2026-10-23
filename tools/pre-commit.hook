@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# .git/hooks/pre-commit — Aegis pre-commit hook
+# Installed by: bash tools/install_hooks.sh
+# Runs tests/runner.sh before every commit. Fails the commit on test failure.
+
+set -euo pipefail
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+echo "[pre-commit] Running Aegis test suite..."
+if bash "$REPO_ROOT/tests/runner.sh"; then
+    echo "[pre-commit] All checks passed."
+else
+    echo "[pre-commit] FAILED — commit aborted. Fix the issues above and try again."
+    exit 1
+fi
