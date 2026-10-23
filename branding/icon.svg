@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Outer Shield Primary Gradient -->
+    <linearGradient id="shieldOuterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="40%" stop-color="#0284C7" />
+      <stop offset="100%" stop-color="#0369A1" />
+    </linearGradient>
+
+    <!-- Outer Shield Dark Plate -->
+    <linearGradient id="plateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+
+    <!-- Inner Core Glowing Gradient -->
+    <linearGradient id="coreGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#BAE6FD" />
+      <stop offset="100%" stop-color="#38BDF8" />
+    </linearGradient>
+
+    <!-- Drop Shadow Filter -->
+    <filter id="shieldShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0284C7" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Base Rounded Container -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" stroke="#1E293B" stroke-width="4" />
+
+  <!-- Shield Outer Glow / Shadow Group -->
+  <g filter="url(#shieldShadow)">
+    <!-- Outer Shield Rim -->
+    <path d="M 256 72 
+             L 384 124 
+             C 384 260, 332 376, 256 432 
+             C 180 376, 128 260, 128 124 
+             Z" 
+          fill="url(#plateGrad)" 
+          stroke="url(#shieldOuterGrad)" 
+          stroke-width="10" 
+          stroke-linejoin="round" />
+
+    <!-- Inner Shield Plate Layer -->
+    <path d="M 256 108 
+             L 356 148 
+             C 356 252, 314 346, 256 392 
+             C 198 346, 156 252, 156 148 
+             Z" 
+          fill="#0B132B" 
+          stroke="#0284C7" 
+          stroke-width="3" 
+          opacity="0.85" />
+
+    <!-- Core Geometric Chevron / Aegis Crest -->
+    <path d="M 256 164 
+             L 324 192 
+             L 256 348 
+             L 188 192 
+             Z" 
+          fill="url(#coreGrad)" 
+          opacity="0.95" />
+
+    <!-- Central Diamond Apex -->
+    <polygon points="256,196 288,240 256,284 224,240" fill="#FFFFFF" opacity="0.9" />
+
+    <!-- Left & Right Wing Accents -->
+    <path d="M 176 160 L 220 178 L 196 248 Z" fill="#38BDF8" opacity="0.6" />
+    <path d="M 336 160 L 292 178 L 316 248 Z" fill="#0284C7" opacity="0.6" />
+  </g>
+</svg>

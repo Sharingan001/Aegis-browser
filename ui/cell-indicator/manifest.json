@@ -1,0 +1,37 @@
+{
+  "manifest_version": 2,
+  "name": "Aegis Cell Indicator",
+  "version": "1.0.0",
+  "description": "Displays declared 3-axis posture (Network, Surface, Identity) for the active Cell context.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png"
+  },
+  "background": {
+    "scripts": [
+      "data/cell_store.js",
+      "background.js"
+    ],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    },
+    "default_title": "Aegis Cell Posture",
+    "default_popup": "popup/popup.html"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "cell-indicator@aegis.local",
+      "strict_min_version": "153.0"
+    }
+  },
+  "permissions": [
+    "tabs",
+    "storage"
+  ]
+}

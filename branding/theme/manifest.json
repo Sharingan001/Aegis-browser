@@ -1,0 +1,39 @@
+{
+  "manifest_version": 2,
+  "name": "Aegis Obsidian Dark",
+  "version": "1.0.0",
+  "description": "Default obsidian dark theme prototype for Aegis Browser.",
+  "icons": {
+    "48": "icon-48.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "obsidian-theme@aegis.local",
+      "strict_min_version": "153.0"
+    }
+  },
+  "theme": {
+    "colors": {
+      "frame": "#0B0F19",
+      "tab_background_text": "#94A3B8",
+      "toolbar": "#0F172A",
+      "toolbar_text": "#F8FAFC",
+      "toolbar_field": "#1E293B",
+      "toolbar_field_text": "#F8FAFC",
+      "toolbar_field_border": "#334155",
+      "toolbar_field_focus": "#0F172A",
+      "toolbar_top_separator": "#1E293B",
+      "toolbar_bottom_separator": "#1E293B",
+      "tab_line": "#38BDF8",
+      "tab_selected": "#1E293B",
+      "popup": "#0F172A",
+      "popup_text": "#F8FAFC",
+      "popup_border": "#334155",
+      "ntp_background": "#0B0F19",
+      "ntp_text": "#F8FAFC",
+      "sidebar": "#0B0F19",
+      "sidebar_text": "#94A3B8",
+      "sidebar_border": "#1E293B"
+    }
+  }
+}

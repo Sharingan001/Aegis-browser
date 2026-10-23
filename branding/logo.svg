@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 200" width="760" height="200">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+    <linearGradient id="coreGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#BAE6FD" />
+      <stop offset="100%" stop-color="#38BDF8" />
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F8FAFC" />
+      <stop offset="100%" stop-color="#E2E8F0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Left Shield Emblem (160x160 area) -->
+  <g transform="translate(20, 20)">
+    <!-- Base Plate -->
+    <path d="M 80 10 
+             L 140 35 
+             C 140 100, 115 140, 80 155 
+             C 45 140, 20 100, 20 35 
+             Z" 
+          fill="#0F172A" 
+          stroke="url(#shieldGrad)" 
+          stroke-width="5" 
+          stroke-linejoin="round" />
+
+    <!-- Inner Core -->
+    <path d="M 80 40 
+             L 115 55 
+             L 80 125 
+             L 45 55 
+             Z" 
+          fill="url(#coreGrad)" />
+
+    <!-- Diamond -->
+    <polygon points="80,55 95,75 80,95 65,75" fill="#FFFFFF" opacity="0.9" />
+  </g>
+
+  <!-- Wordmark -->
+  <text x="210" y="110" 
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
+        font-size="76" 
+        font-weight="800" 
+        letter-spacing="6" 
+        fill="url(#textGrad)">AEGIS</text>
+
+  <!-- Tagline / Subtitle -->
+  <text x="215" y="152" 
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
+        font-size="20" 
+        font-weight="600" 
+        letter-spacing="9" 
+        fill="#38BDF8">BROWSER</text>
+</svg>

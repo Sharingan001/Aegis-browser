@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Aegis Cell Posture</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <img src="../icons/icon-32.png" alt="Aegis Emblem" class="brand-icon">
+        <span class="brand-title">AEGIS</span>
+        <span class="brand-subtitle">POSTURE</span>
+      </div>
+      <div id="cell-badge-indicator" class="cell-tag">S3</div>
+    </header>
+
+    <!-- Active Cell Banner -->
+    <section class="cell-card">
+      <div class="cell-card-header">
+        <div class="cell-status-dot" id="cell-dot"></div>
+        <div class="cell-meta">
+          <div class="cell-label">ACTIVE CELL CONTEXT</div>
+          <div class="cell-name" id="cell-name">Research &amp; Analysis</div>
+        </div>
+      </div>
+      <p class="cell-notes" id="cell-notes">
+        Onion circuit routing with JIT disabled and ephemeral state.
+      </p>
+    </section>
+
+    <!-- 3-Axis Posture Overview -->
+    <section class="axes-grid">
+      <!-- Network Axis (N) -->
+      <div class="axis-card" id="axis-network">
+        <div class="axis-top">
+          <span class="axis-dim">NETWORK</span>
+          <span class="axis-code" id="network-code">N2</span>
+        </div>
+        <div class="axis-title" id="network-title">Tor Circuit</div>
+        <div class="axis-desc" id="network-desc">Three-hop onion routed circuit with remote DNS resolution.</div>
+      </div>
+
+      <!-- Surface Axis (S) -->
+      <div class="axis-card" id="axis-surface">
+        <div class="axis-top">
+          <span class="axis-dim">SURFACE</span>
+          <span class="axis-code" id="surface-code">S3</span>
+        </div>
+        <div class="axis-title" id="surface-title">Restricted Surface</div>
+        <div class="axis-desc" id="surface-desc">JIT and WebAssembly disabled; WebGL disabled.</div>
+      </div>
+
+      <!-- Identity Axis (I) -->
+      <div class="axis-card" id="axis-identity">
+        <div class="axis-top">
+          <span class="axis-dim">IDENTITY</span>
+          <span class="axis-code" id="identity-code">I4</span>
+        </div>
+        <div class="axis-title" id="identity-title">Ephemeral State</div>
+        <div class="axis-desc" id="identity-desc">In-memory session; storage cleared upon Cell closure.</div>
+      </div>
+    </section>
+
+    <!-- Cell Switcher (Prototype Context Selector) -->
+    <section class="cell-switcher">
+      <label for="cell-select" class="switcher-label">Switch Cell Context (Prototype):</label>
+      <select id="cell-select" class="switcher-select">
+        <!-- Populated dynamically -->
+      </select>
+    </section>
+
+    <!-- Architectural Integrity Note -->
+    <footer class="footer-note">
+      <span>Declared configuration. (Instance-wide preferences governed per D-008).</span>
+    </footer>
+  </div>
+
+  <script src="../data/cell_store.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

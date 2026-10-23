@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Aegis Visual Design & Color Palette Tokens",
+  "version": "1.0.0",
+  "theme": {
+    "name": "Aegis Obsidian Dark",
+    "background": {
+      "base": "#0B0F19",
+      "surface": "#111827",
+      "raised": "#1F2937",
+      "overlay": "#374151"
+    },
+    "border": {
+      "subtle": "#1F2937",
+      "default": "#374151",
+      "focus": "#38BDF8"
+    },
+    "text": {
+      "primary": "#F9FAFB",
+      "secondary": "#9CA3AF",
+      "muted": "#6B7280",
+      "accent": "#38BDF8"
+    },
+    "accent": {
+      "primary": "#0284C7",
+      "secondary": "#38BDF8",
+      "highlight": "#BAE6FD"
+    }
+  },
+  "axes": {
+    "network": {
+      "N0": { "name": "Direct", "badge": "#6B7280", "description": "Standard direct route via local network." },
+      "N1": { "name": "Encrypted DNS", "badge": "#38BDF8", "description": "Strict DoH/DoT; no silent fallback to cleartext DNS." },
+      "N2": { "name": "Tor Circuit", "badge": "#818CF8", "description": "Three-hop onion routed circuit with remote DNS resolution." },
+      "N3": { "name": "Tor Bridge", "badge": "#A855F7", "description": "Pluggable transport or bridge routed circuit." }
+    },
+    "surface": {
+      "S1": { "name": "Standard Surface", "badge": "#10B981", "description": "Standard web platform feature set." },
+      "S2": { "name": "Reduced Surface", "badge": "#06B6D4", "description": "Hardened platform configuration; WebRTC restricted." },
+      "S3": { "name": "Restricted Surface", "badge": "#F59E0B", "description": "JIT and WebAssembly disabled; WebGL disabled." },
+      "S4": { "name": "Minimal Surface", "badge": "#EF4444", "description": "Scripts blocked by default; static document mode." }
+    },
+    "identity": {
+      "I1": { "name": "Standard Partition", "badge": "#64748B", "description": "First-party domain partitioning." },
+      "I2": { "name": "Isolated Cell", "badge": "#38BDF8", "description": "Isolated container storage, cookies, and cache." },
+      "I3": { "name": "Resistant Surface", "badge": "#818CF8", "description": "Standardized fingerprint canvas/audio resistance enabled." },
+      "I4": { "name": "Ephemeral State", "badge": "#EC4899", "description": "In-memory session; all storage cleared on Cell close." }
+    }
+  },
+  "ui_guidelines": {
+    "prohibited_terms": [
+      "safe",
+      "secure",
+      "bulletproof",
+      "unhackable",
+      "invulnerable",
+      "anonymous",
+      "foolproof"
+    ],
+    "approved_alternatives": {
+      "safe / secure": "restricted, isolated, declared posture, verified",
+      "anonymous": "circuit-routed, onion-routed, unlinked identity"
+    }
+  }
+}

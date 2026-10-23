@@ -1,0 +1,37 @@
+# build/mozconfig-baseline
+#
+# Baseline mozconfig for compiling Aegis Browser (Gecko / Firefox ESR 153.5.1esr)
+# Tailored for host with 16 GiB total RAM (~9 GiB free) and ~86 GB free disk.
+#
+# Critical constraints enforced:
+# 1. Parallel jobs limited to -j4 to prevent OOM during compilation.
+# 2. lld linker enabled to prevent OOM when linking libxul.so.
+# 3. Debug symbols disabled to fit within available disk space (~45-55 GB peak).
+# 4. Tests and crashreporter disabled to conserve build time and disk footprint.
+
+# Application Target
+ac_add_options --enable-application=browser
+ac_add_options --enable-release
+
+# Object Directory
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-aegis-release
+
+# Parallelism Limitation (Protects 9 GiB Free RAM)
+mk_add_options MOZ_MAKE_FLAGS="-j4"
+
+# Linker Optimization (LLVM lld requires ~4-5 GB peak RAM vs 16+ GB with ld.bfd/gold)
+ac_add_options --enable-linker=lld
+
+# Optimization & Debug Options
+ac_add_options --enable-optimize="-O2"
+ac_add_options --disable-debug
+ac_add_options --disable-debug-symbols
+
+# Disable Unnecessary Subsystems
+ac_add_options --disable-tests
+ac_add_options --disable-crashreporter
+ac_add_options --disable-telemetry
+ac_add_options --disable-updater
+
+# Rust Code Generation Constraint
+export RUSTFLAGS="-C codegen-units=4"

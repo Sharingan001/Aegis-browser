@@ -158,8 +158,41 @@ fi
 
 echo ""
 
-# -- 7. Placeholder: axis enforcement tests (Phase 2+) -----------------------
-echo "--- [7] Axis enforcement tests (Phase 2+, skipped in Phase 0) ---"
+# -- 7. LICENSES_AND_TRADEMARKS.md presence check ----------------------------
+echo "--- [7] docs/LICENSES_AND_TRADEMARKS.md check ---"
+LIC_FILE="$REPO_ROOT/docs/LICENSES_AND_TRADEMARKS.md"
+if [ -f "$LIC_FILE" ] && grep -q "MPL 2.0" "$LIC_FILE" && grep -q "LEGAL ADVICE REQUIRED" "$LIC_FILE"; then
+    echo "PASS: docs/LICENSES_AND_TRADEMARKS.md exists with required sections"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: docs/LICENSES_AND_TRADEMARKS.md missing or incomplete"
+    ERRORS+=("docs/LICENSES_AND_TRADEMARKS.md missing or incomplete")
+    FAIL=$((FAIL + 1))
+fi
+
+echo ""
+
+# -- 8. Phase 1a UI & Cell Indicator tests -----------------------------------
+echo "--- [8] Phase 1a UI & Cell Indicator tests ---"
+if [ -f "$REPO_ROOT/tests/ui/test_cell_indicator.py" ]; then
+    if python3 -m unittest tests/ui/test_cell_indicator.py -v 2>&1; then
+        echo "PASS: UI, theme, and Cell Indicator tests passed (including honest language lint)"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: UI and Cell Indicator tests failed"
+        ERRORS+=("UI and Cell Indicator tests failed")
+        FAIL=$((FAIL + 1))
+    fi
+else
+    echo "FAIL: tests/ui/test_cell_indicator.py missing"
+    ERRORS+=("tests/ui/test_cell_indicator.py missing")
+    FAIL=$((FAIL + 1))
+fi
+
+echo ""
+
+# -- 9. Placeholder: axis enforcement tests (Phase 2+) -----------------------
+echo "--- [9] Axis enforcement tests (Phase 2+, skipped in Phase 1a) ---"
 echo "SKIP: axis enforcement tests are not yet implemented"
 
 echo ""
