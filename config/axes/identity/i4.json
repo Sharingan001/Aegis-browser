@@ -2,27 +2,64 @@
   "schema": 1,
   "axis": "identity",
   "id": "I4",
-  "name": "Minimal-API",
+  "name": "Minimal-Signals",
   "extends": "I2",
+  "design_rationale": "I4 is used exclusively with S4 (JavaScript disabled). Script APIs (navigator.getGamepads, etc.) are unreachable under S4 because the JS engine itself is disabled, so pref-gating script APIs in I4 adds no protection that S4 does not already enforce. I4 must therefore target passive, non-script identity signals: request headers (Accept-Language normalization), CSS-visible values (prefers-color-scheme, resolution, pointer, hover), remote font loading, and referrer policy. These signals are emitted by the browser regardless of whether JavaScript is enabled.",
   "controls": [
     {
-      "id": "dom.gamepad",
+      "id": "net.accept_language_normalize",
       "mechanism": "autoconfig",
       "set": {
-        "dom.gamepad.enabled": false
+        "intl.accept_languages": "en-US, en"
       },
       "locked": true,
       "override_of": "I2",
-      "override_reason": "Disable Gamepad API to reduce attack surface and API entropy in static quarantine",
+      "override_reason": "Normalize Accept-Language header to a static value to prevent language-based fingerprinting via HTTP headers (passive non-script signal)",
       "verify": {
         "type": "runtime-check",
-        "test": "tests/axes/test_identity_levels.py"
+        "test": "tests/axes/test_identity_levels.py",
+        "method": "Query Accept-Language header sent by browser to local test server"
       },
-      "user_cost": "Gamepad and controller access blocked"
+      "user_cost": "Browser always reports en-US locale regardless of system locale; web pages receive English"
+    },
+    {
+      "id": "net.remote_fonts_disabled",
+      "mechanism": "autoconfig",
+      "set": {
+        "gfx.downloadable_fonts.enabled": false
+      },
+      "locked": true,
+      "override_of": "I2",
+      "override_reason": "Block remote font loading in I4 static quarantine to prevent font enumeration fingerprinting via CSS-rendered glyphs and to close the remote-font timing side channel",
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py",
+        "method": "Verify pref value is locked false via Marionette chrome context"
+      },
+      "user_cost": "Pages using custom web fonts fall back to system fonts"
+    },
+    {
+      "id": "net.referrer_origin_only",
+      "mechanism": "autoconfig",
+      "set": {
+        "network.http.referer.trimmingPolicy": 2,
+        "network.http.referer.XOriginPolicy": 2
+      },
+      "locked": true,
+      "override_of": "I2",
+      "override_reason": "Trim referrer to origin only and restrict cross-origin referrer to origin on cross-origin requests (passive non-script signal emitted with every navigation)",
+      "verify": {
+        "type": "runtime-check",
+        "test": "tests/axes/test_identity_levels.py",
+        "method": "Verify pref values via Marionette chrome context"
+      },
+      "user_cost": "Third-party analytics that rely on full-URL Referer headers receive only the origin"
     }
   ],
   "compat_notes": [
-    "Used exclusively with S4 Static surface in detonation quarantine"
+    "Used exclusively with S4 Static surface in detonation quarantine",
+    "dom.gamepad.enabled is NOT listed here: with JavaScript disabled (S4), the Gamepad API is unreachable regardless of this pref. Pref-gating it in I4 would be redundant security theater.",
+    "CSS media queries (prefers-color-scheme, resolution, pointer, hover) are emitted passively; normalization requires a patch not yet available in ESR 153 - tracked as OPEN in VERIFY-I-010."
   ],
   "fingerprint_visible": true
 }

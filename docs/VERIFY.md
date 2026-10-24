@@ -53,17 +53,24 @@ All policy/pref names below are from spec Part 5.2 and must be verified against 
 
 ## Axis I: Identity level preferences
 
+**Status definitions:**
+- **VERIFIED (EFFECTIVE):** A behavioral test (DOM probe, timing check, network probe) confirmed the protection has a measurable effect in the running engine. This is the highest grade.
+- **VERIFIED (SET):** A live Marionette chrome-context query (`Services.prefs`) confirmed the pref is set/locked to the expected value in-memory. The pref was not independently exercised at the behavioral level beyond the query itself.
+- **OPEN:** Not yet verified against the pinned ESR.
+
 | ID | Pref / Policy name | Axis level | Status | Notes |
 |---|---|---|---|---|
-| VERIFY-I-001 | `privacy.resistFingerprinting` | I2/I4 | VERIFIED (EFFECTIVE) | Verified live at runtime in `tests/axes/test_identity_levels.py`. Locked true in I2 and I4; enforces UTC timezone spoofing, 1200x600 rounded window, DPR=2, concurrency=4, touch=5, WebGL vendor/renderer sanitized to "Mozilla". Resembles Tor Browser defaults, unmeasured. |
-| VERIFY-I-002 | `privacy.fingerprintingProtection` and sub-prefs | I3 | VERIFIED (EFFECTIVE) | Verified live at runtime in `tests/axes/test_identity_levels.py`. Locked true in I3; remote overrides locked false (D-012). Dynamic per-target override verified (`privacy.fingerprintingProtection.overrides`). |
-| VERIFY-I-003 | Letterboxing: `privacy.resistFingerprinting.letterboxing` | I2/I4 | VERIFIED (EFFECTIVE) | Verified live at runtime in `tests/axes/test_identity_levels.py`. Locked true in I2 and I4; pads viewport with margin bars at standardized steps. |
-| VERIFY-I-004 | Timer precision reduction: `privacy.reduceTimerPrecision` + RFP | I2+ | VERIFIED (EFFECTIVE) | Baseline `privacy.reduceTimerPrecision: true` enforces 1ms steps. RFP default enforces ~16.667ms frame-rate clamping with jitter. Configurable via `privacy.resistFingerprinting.reduceTimerPrecision.microseconds` (100000us = 100ms verified). |
-| VERIFY-I-005 | Canvas seeded noise: `EfficientCanvasRandomization` | I3 | VERIFIED (EFFECTIVE) | Native origin-keyed canvas noise provided by FPP (A-002). Empirical test proved noise is keyed by site principal, NOT by container (`userContextId`). |
-| VERIFY-I-006 | `media.peerconnection.*` prefs for WebRTC local-IP leak | I2/I3/I4 | VERIFIED (EFFECTIVE) | Verified live at runtime in `tests/axes/test_identity_levels.py`. `media.peerconnection.ice.no_host: true` prevents local host candidate IP exposure. |
-| VERIFY-I-007 | `network.http.referer.*` prefs for referrer trimming | I2/I3/I4 | VERIFIED (EFFECTIVE) | Verified live at runtime in `tests/axes/test_identity_levels.py`. `network.http.referer.trimmingPolicy: 2` trims cross-origin referrers to origin only. |
-| VERIFY-I-008 | `intl.accept_languages` handling for language header normalization | I2+ | OPEN | Verify mechanism in ESR 153 |
-| VERIFY-I-009 | High-entropy API prefs: gamepad | I4 | VERIFIED (EFFECTIVE) | Verified live at runtime in `tests/axes/test_identity_levels.py`. `dom.gamepad.enabled: false` strips Gamepad API in I4 Minimal-API. Other sub-APIs (sensors, battery) tracked under M8. |
+| VERIFY-I-001 | `privacy.resistFingerprinting` | I2/I4 | VERIFIED (EFFECTIVE) | Behavioral: Phase 2b probe confirmed UTC timezone spoofing (`getTimezoneOffset() == 0`), rounded viewport geometry, and timer clamping to ~16.67ms. `test_i2_runtime_enforcement` (Marionette) confirms pref locked true. Resembles Tor Browser defaults, unmeasured crowd. |
+| VERIFY-I-002 | `privacy.fingerprintingProtection` and sub-prefs | I3 | VERIFIED (EFFECTIVE) | Behavioral: Phase 2b probe confirmed canvas hash divergence between origins. `test_i3_runtime_enforcement` (Marionette) confirms FPP locked true, remoteOverrides locked false (D-012). `test_fpp_per_target_override_changes_behavior` confirms live override switching. |
+| VERIFY-I-003 | `privacy.resistFingerprinting.letterboxing` | I2/I4 | VERIFIED (SET) | Marionette query confirmed pref locked true in I2/I4. Behavioral test (viewport quantization measurement) not yet run; labeled VERIFIED (SET) only. |
+| VERIFY-I-004 | Timer precision reduction: `privacy.reduceTimerPrecision` + RFP | I2+ | VERIFIED (EFFECTIVE) | Behavioral: Phase 2b probe confirmed timer clamping to 16.667ms frame-rate steps under RFP. Marionette confirms `privacy.reduceTimerPrecision: true`. |
+| VERIFY-I-005 | Canvas seeded noise: FPP `EfficientCanvasRandomization` target | I3 | VERIFIED (EFFECTIVE) | Behavioral: Phase 2b probe measured canvas hash divergence between sites under I3 FPP. Container test confirmed noise is keyed by site principal, NOT by `userContextId` (documented in A-002). |
+| VERIFY-I-006 | `media.peerconnection.ice.no_host` | I2/I3/I4 | VERIFIED (SET) | Marionette query confirmed pref locked true in I2, I3, I4. Behavioral test (actual WebRTC ICE candidate inspection) not yet run; labeled VERIFIED (SET) only. |
+| VERIFY-I-007 | `network.http.referer.trimmingPolicy` | I2/I3/I4 | VERIFIED (SET) | Marionette query confirmed value 2 (origin only cross-origin) in I2, I3, I4. Behavioral test (measured Referer header in HTTP request) not yet run; labeled VERIFIED (SET) only. |
+| VERIFY-I-008 | `intl.accept_languages` normalization | I4 | VERIFIED (SET) | I4 locks `intl.accept_languages: "en-US, en"`. Marionette query verifies pref value. Behavioral test (header probe to local server) not yet run; labeled VERIFIED (SET) only. |
+| VERIFY-I-009 | `gfx.downloadable_fonts.enabled` disabled in I4 | I4 | VERIFIED (SET) | I4 locks `gfx.downloadable_fonts.enabled: false`. Marionette query verifies pref. Behavioral test (@font-face fallback probe) not yet run; labeled VERIFIED (SET) only. Rationale: closes remote-font timing side channel and CSS glyph enumeration in static quarantine. |
+| VERIFY-I-009b | `network.http.referer.XOriginPolicy` | I4 | VERIFIED (SET) | I4 locks `network.http.referer.XOriginPolicy: 2` (origin only on cross-origin). Marionette query verifies pref. |
+| VERIFY-I-010 | CSS media query normalization (`prefers-color-scheme`, `resolution`, `pointer`, `hover`) | I4 | OPEN | CSS media query values are emitted passively and are a non-script identity signal. No pref in ESR 153 normalizes these. Normalization requires a patch not yet available. Tracked for Phase 3. |
 
 ---
 

@@ -52,20 +52,33 @@ Every row in Spec Part 5.2 is graded against exactly one of four rigorous verifi
 | **I-5** | Canvas / audio readback | I1: native<br/>I3: site-keyed noise<br/>I2/I4: normalized/constant | FPP canvas randomization (I3), RFP uniform canvas (I2/I4) | **Behavior-tested** | `test_fpp_per_target_override_changes_behavior` proves FPP per-target override switches noise behavior; Phase 2b probe measured canvas hash divergence. |
 | **I-6** | Hardware concurrency & touch points | I1: native<br/>I3: native<br/>I2/I4: normalized | `privacy.resistFingerprinting` | **Behavior-tested** | Phase 2b probe confirmed RFP clamps `hardwareConcurrency: 2` and `maxTouchPoints: 0` (headless ESR 153.5.1). |
 | **I-7** | High-entropy APIs (Gamepad) | I1..I3: on<br/>I4: off | `dom.gamepad.enabled` | **Pref verified live** | `test_i4_runtime_enforcement` verifies `dom.gamepad.enabled` is false in I4 and true in I1..I3. |
-| **I-8** | Referrer policy | I1: default<br/>I2..I4: origin cross-origin | `network.http.referer.trimmingPolicy: 2` | **Pref verified live** | `test_i1_runtime_enforcement` (0) and `test_i3_runtime_enforcement` (2) verify effective prefs live. |
-| **I-9** | WebRTC local IP leak protection | I1: default<br/>I2..I4: no local host IP | `media.peerconnection.ice.no_host: true` | **Pref verified live** | `test_i1_runtime_enforcement` (false) and `test_i3_runtime_enforcement` (true) verify effective prefs live. |
-| **I-10** | Language header normalization | I1: native<br/>I2..I4: normalized | `intl.accept_languages` / RFP | **Config only** | RFP handles language normalization under I2/I4; standalone config check only. |
+| **I-7** | High-entropy APIs (Gamepad) | NOT in I-axis | **REMOVED FROM I-AXIS** | Under S4 (JavaScript disabled), `navigator.getGamepads` and all script APIs are unreachable regardless of the `dom.gamepad.enabled` pref. Pref-gating it in I4 was security theater. Removed from I4 definition. |
+| **I-8** | Referrer policy (trimmingPolicy) | I1: default<br/>I2..I4: origin cross-origin | `network.http.referer.trimmingPolicy: 2` | **Pref verified live** | `test_i1_runtime_enforcement` (0) and `test_i3_runtime_enforcement` (2) verify effective prefs via Marionette. |
+| **I-9** | WebRTC local IP leak protection | I1: default<br/>I2..I4: no local host IP | `media.peerconnection.ice.no_host: true` | **Pref verified live** | `test_i1_runtime_enforcement` (false) and `test_i3_runtime_enforcement` (true) verify effective prefs via Marionette. |
+| **I-10** | Accept-Language header normalization (I4) | I4 only | `intl.accept_languages: "en-US, en"` locked | **Pref verified live** | I4 locks Accept-Language to static value. `test_i4_runtime_enforcement` verifies `accept_lang` pref via Marionette. Behavioral test (header probe to local server) not yet run. |
+| **I-11** | Remote font loading blocked (I4) | I4 only | `gfx.downloadable_fonts.enabled: false` locked | **Pref verified live** | I4 locks remote fonts off. `test_i4_runtime_enforcement` verifies `remote_fonts` pref via Marionette. Closes timing side channel and CSS glyph enumeration in static quarantine. |
+| **I-12** | Cross-origin referrer XOriginPolicy (I4) | I4 only | `network.http.referer.XOriginPolicy: 2` locked | **Pref verified live** | I4 locks cross-origin referrer to origin-only. `test_i4_runtime_enforcement` verifies `xorigin_policy` pref via Marionette. |
+| **I-13** | CSS media query normalization (`prefers-color-scheme`, `resolution`, `pointer`, `hover`) | I4 intended | No pref available in ESR 153 | **Not yet** | CSS media queries are passive non-script identity signals. No normalization possible without an engine patch. Tracked as VERIFY-I-010, Phase 3. |
 
 ---
 
 ## 4. Quantitative Summary by Status
+
+> **Grade definitions (Axis I):**
+> - **Behavior-tested:** A behavioral probe (DOM, timing, network probe) confirmed measurable effect in running engine.
+> - **Pref verified live:** Marionette `Services.prefs` query confirmed pref set/locked in-memory. No independent behavioral exercise.
+> - **Config only:** Defined in JSON and compiled into `aegis.cfg`; no live test run.
+> - **Not yet:** Not implemented or verified at engine level.
+
 * **Part 5.2 Surface Controls (17 total):**
   - **Behavior-tested:** 4 (JIT compilers, WebAssembly, WebGL, JavaScript S4 lockout)
   - **Pref verified live:** 2 (HTTPS-only, Autoplay)
   - **Config only:** 4 (Mixed content blocked, Cookie partitioning, Risky font rendering, Remote fonts)
   - **Not yet:** 7 (HTTPS-first upgrade, Permission matrix, Protocol handlers, Downloads, Persistent storage, Extensions, Link Guard browser integration)
-* **Part 5.3 Identity Controls (10 total):**
-  - **Behavior-tested:** 4 (FP baseline, Timezone/letterboxing, Canvas/audio overrides, Hardware/touch normalization)
-  - **Pref verified live:** 5 (Remote overrides lockout, Timer precision, High-entropy Gamepad, Referrer trimming, WebRTC no_host)
-  - **Config only:** 1 (Language header normalization)
-  - **Not yet:** 0
+* **Part 5.3 Identity Controls (13 rows, including I4 redefinition):**
+  - **Behavior-tested:** 4 (FP baseline, Timezone/letterboxing under RFP, Canvas/audio divergence under FPP, Hardware/touch normalization under RFP)
+  - **Pref verified live:** 6 (Remote overrides lockout, Timer precision, Referrer trimming, WebRTC no_host, Accept-Language I4, Remote fonts I4, XOriginPolicy I4) — note: 7 individual prefs across these rows
+  - **Config only:** 0
+  - **Not yet:** 1 (CSS media query normalization for I4, Phase 3)
+  - **Removed:** 1 (Gamepad API — security theater under S4 JS-off)
+
