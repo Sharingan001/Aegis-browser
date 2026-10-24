@@ -1,0 +1,26 @@
+{
+  "manifest_version": 2,
+  "name": "Aegis Site X-ray",
+  "version": "1.0.0",
+  "description": "Passive security posture inspector reviewing HTTP response headers and security attributes.",
+  "applications": {
+    "gecko": {
+      "id": "site-xray@aegis.local",
+      "strict_min_version": "115.0"
+    }
+  },
+  "permissions": [
+    "webRequest",
+    "tabs",
+    "storage",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "xray_logic.js",
+      "background.js"
+    ],
+    "persistent": true
+  },
+  "notes": "Permission justification: webRequest (non-blocking) and <all_urls> are required to passively observe response headers (Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options, Set-Cookie flags) across visited websites without modifying or blocking traffic (webRequestBlocking is not requested). tabs is used to associate posture reports with the active tab. storage is used for kill-switch persistence. Operates strictly offline with zero external network communication (Privacy Class P0)."
+}

@@ -1,0 +1,15 @@
+{
+  "id": "session-sweeper",
+  "name": "Session Sweeper",
+  "version": "1.0.0",
+  "privacy_class": "P1",
+  "permissions": [
+    "browsingData",
+    "storage",
+    "alarms"
+  ],
+  "kill_switch": true,
+  "network": "none",
+  "tier": 1,
+  "description": "Periodically and selectively purges stale site browsing data (cookies, storage, cache) older than N days while preserving allow-listed domains."
+}

@@ -1,0 +1,41 @@
+{
+  "manifest_version": 2,
+  "name": "Aegis Command Palette",
+  "version": "1.0.0",
+  "description": "Keyboard-driven omnibar for rapid tier navigation, cell actions, and tool invocation.",
+  "applications": {
+    "gecko": {
+      "id": "command-palette@aegis.local",
+      "strict_min_version": "115.0"
+    }
+  },
+  "permissions": [
+    "commands",
+    "storage",
+    "tabs"
+  ],
+  "commands": {
+    "toggle-palette": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+P",
+        "linux": "Ctrl+Shift+P",
+        "mac": "Command+Shift+P"
+      },
+      "description": "Toggle Aegis Command Palette"
+    },
+    "clean-active-url": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+L"
+      },
+      "description": "Clean tracking parameters from active tab URL"
+    }
+  },
+  "background": {
+    "scripts": [
+      "palette_logic.js",
+      "background.js"
+    ],
+    "persistent": true
+  },
+  "notes": "Permission justification: commands is required to register global keyboard shortcuts (Ctrl+Shift+P); tabs is required to query the active tab for contextual actions (e.g. cleaning active URL or auditing tab posture); storage is used for user preference and kill-switch state persistence. Strictly least privilege: does NOT request host permissions (<all_urls>), webRequest, or network access. Operates 100% locally and offline (Privacy Class P0)."
+}

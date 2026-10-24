@@ -1,0 +1,15 @@
+{
+  "id": "command-palette",
+  "name": "Command Palette",
+  "version": "1.0.0",
+  "privacy_class": "P0",
+  "permissions": [
+    "commands",
+    "storage",
+    "tabs"
+  ],
+  "kill_switch": true,
+  "network": "none",
+  "tier": 1,
+  "description": "Keyboard-driven command palette for quick navigation, cell operations, tier inspection, and invoking Aegis security tools."
+}

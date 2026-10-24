@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2,
+  "name": "Aegis Session Sweeper",
+  "version": "1.0.0",
+  "description": "Selectively purges expired site browsing data while preserving user allow-lists.",
+  "applications": {
+    "gecko": {
+      "id": "session-sweeper@aegis.local",
+      "strict_min_version": "115.0"
+    }
+  },
+  "permissions": [
+    "browsingData",
+    "storage",
+    "alarms"
+  ],
+  "background": {
+    "scripts": [
+      "sweeper_logic.js",
+      "background.js"
+    ],
+    "persistent": true
+  },
+  "notes": "Permission justification: browsingData is required to clear stale cookies, localStorage, and cache for origins older than the retention threshold; storage is required to persist user allow-lists and retention preferences (Privacy Class P1); alarms is used for periodic background sweep scheduling. Operates completely offline with zero external network connectivity."
+}

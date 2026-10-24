@@ -82,3 +82,16 @@ Every row in Spec Part 5.2 is graded against exactly one of four rigorous verifi
   - **Not yet:** 1 (CSS media query normalization for I4, Phase 3)
   - **Removed:** 1 (Gamepad API — security theater under S4 JS-off)
 
+---
+
+## 5. Part 8.1 / Tier-1 Built-in Modules Status (Phase 2d)
+
+| Module ID | Module Name | Privacy Class | Declared Permissions | Status | Test / Verification Method & Honest Assessment |
+| :---: | :--- | :---: | :--- | :---: | :--- |
+| **M11** | **Link Cleaner** | **P1** | `webRequest`, `webRequestBlocking`, `storage`, `<all_urls>` | **Behavior-tested** | `test_link_cleaner.py`: Live browser redirection strips tracking queries (`utm_*`, `fbclid`, `gclid`), honors user keep-map from `browser.storage.local`, dynamic kill switch verified. Manifest honestly acknowledges `<all_urls>` + `webRequestBlocking` is broad (not least privilege) due to DNR wildcard limitations. |
+| **M8** | **Download Inspector** | **P0** | `downloads`, `storage` | **Behavior-tested (metadata)** | `test_download_inspector.py`: Live `downloads.onCreated` hook inspects filename metadata, flags dangerous double extensions (`.pdf.exe`), records to `download_flag_log`, and pauses download. True byte/hash quarantine staging under `$XDG_RUNTIME_DIR/aegis/staging/` designed in SPIKE-007 (Phase 3). |
+| **M10** | **Session Sweeper** | **P1** | `browsingData`, `storage`, `alarms` | **Behavior-tested** | `test_session_sweeper.py`: Live browser integration via Marionette; purges expired site browsing data for origins inactive > N days, preserves allow-listed domains across subdomains, dynamic kill switch verified. |
+| **M15** | **Site X-ray** | **P0** | `webRequest`, `tabs`, `storage`, `<all_urls>` | **Behavior-tested** | `test_site_xray.py`: Live passive `webRequest.onHeadersReceived` listener (non-blocking) inspects HSTS, CSP, X-Content-Type-Options, cookie flags (Secure/HttpOnly/SameSite), server version disclosure; dynamic kill switch verified. |
+| **M2** | **Command Palette** | **P0** | `commands`, `storage`, `tabs` | **Behavior-tested** | `test_command_palette.py`: Strict least-privilege (zero host permissions, zero network); registers keyboard shortcuts (`Ctrl+Shift+P`), omnibar fuzzy search/filtering across commands, action dispatching, dynamic kill switch verified. |
+
+
