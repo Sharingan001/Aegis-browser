@@ -84,11 +84,11 @@ if (typeof browser !== "undefined" && browser.runtime && browser.runtime.onMessa
     }
 
     if (msg.type === "SET_KEEP_LIST") {
-      keepList = Array.isArray(msg.keepList) ? msg.keepList : [];
+      keepList = (typeof msg.keepList === "object" && msg.keepList !== null) ? msg.keepList : [];
       if (browser.storage && browser.storage.local) {
         browser.storage.local.set({ "link_cleaner_keep_list": keepList });
       }
-      sendResponse({ success: true, keepList: [...keepList] });
+      sendResponse({ success: true, keepList: keepList });
       return true;
     }
 

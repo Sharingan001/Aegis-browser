@@ -46,7 +46,7 @@ class TestIdentityLevels(unittest.TestCase):
         if not ESR_BIN.is_file():
             raise unittest.SkipTest("firefox-esr binary not found; skipping identity level tests")
 
-    def _query_live_identity_tier(self, identity_tier, surface_tier="S1", overrides="", port=None):
+    def _query_live_identity_tier(self, identity_tier, surface_tier="S1", overrides="", port=None, canvas_probe_url=None):
         """Query live effective preferences and content state via Marionette."""
         if port is None:
             port = find_free_port()
@@ -131,10 +131,19 @@ class TestIdentityLevels(unittest.TestCase):
 
             # Query content context
             send_recv(4, "Marionette:SetContext", {"value": "content"})
+            if canvas_probe_url:
+                send_recv(41, "WebDriver:Navigate", {"url": canvas_probe_url})
+
             content_script = """
+            let canvas_data = null;
+            const c = document.getElementById("canvas_probe");
+            if (c && typeof c.toDataURL === "function") {
+                canvas_data = c.toDataURL();
+            }
             return {
                 "tz_offset": new Date().getTimezoneOffset(),
-                "gamepad_supported": typeof navigator.getGamepads === "function"
+                "gamepad_supported": typeof navigator.getGamepads === "function",
+                "canvas_data": canvas_data
             };
             """
             resp_content = send_recv(5, "WebDriver:ExecuteScript", {"script": content_script, "args": []})
@@ -469,33 +478,90 @@ class TestIdentityLevels(unittest.TestCase):
 
     def test_fpp_per_target_override_changes_behavior(self):
         """
-        Prove that a per-target override in privacy.fingerprintingProtection.overrides
-        effectively changes the engine's target configuration at runtime.
+        Behavioral test: Prove that a per-target override in privacy.fingerprintingProtection.overrides
+        effectively changes the engine's runtime fingerprinting protection behavior.
 
         Baseline (I3, no overrides):
           fpp_overrides = "" (empty string)
+          EfficientCanvasRandomization target is ACTIVE: produces site-keyed pseudo-random canvas noise.
 
         Override applied: -CanvasRandomization
           fpp_overrides = "-CanvasRandomization"
-          Meaning: the FPP EfficientCanvasRandomization target is selectively disabled.
-          This proves the per-target override mechanism is live in the running engine.
-        """
-        # Baseline I3: overrides is empty
-        res_baseline = self._query_live_identity_tier("I3", overrides="")
-        self.assertEqual(res_baseline["prefs"]["fpp_overrides"], "",
-                         "Baseline I3 must have empty fpp_overrides")
+          EfficientCanvasRandomization target is DISABLED: produces unperturbed deterministic canvas output.
 
-        # Target override: -CanvasRandomization (disable canvas noise for this instance)
-        res_override = self._query_live_identity_tier("I3", overrides="-CanvasRandomization")
-        self.assertEqual(
-            res_override["prefs"]["fpp_overrides"], "-CanvasRandomization",
-            "Target override must be dynamically configured in running engine"
-        )
-        self.assertNotEqual(
-            res_baseline["prefs"]["fpp_overrides"],
-            res_override["prefs"]["fpp_overrides"],
-            "Override preference must differ from baseline (before='', after='-CanvasRandomization')"
-        )
+        Verifies:
+        1. Live pref configuration differs (before='', after='-CanvasRandomization').
+        2. Live behavioral output differs: SHA-256 canvas readback hash with override differs from baseline.
+        """
+        import http.server
+        import threading
+        import hashlib
+
+        class CanvasHandler(http.server.SimpleHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.end_headers()
+                self.wfile.write(b"""<!DOCTYPE html>
+<html><body>
+<canvas id="canvas_probe" width="120" height="60"></canvas>
+<script>
+const c = document.getElementById("canvas_probe");
+const ctx = c.getContext("2d");
+ctx.fillStyle = "#ff6600";
+ctx.fillRect(10, 10, 80, 40);
+ctx.fillStyle = "#006699";
+ctx.font = "16px sans-serif";
+ctx.fillText("Aegis Canvas Probe", 15, 35);
+ctx.strokeStyle = "rgba(120, 20, 200, 0.7)";
+ctx.lineWidth = 2;
+ctx.strokeRect(5, 5, 110, 50);
+</script>
+</body></html>""")
+
+            def log_message(self, *args):
+                pass
+
+        server = http.server.HTTPServer(("127.0.0.1", 0), CanvasHandler)
+        port_srv = server.server_address[1]
+        srv_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        srv_thread.start()
+
+        probe_url = f"http://127.0.0.1:{port_srv}/"
+        try:
+            # Baseline I3: overrides is empty (canvas randomization enabled)
+            res_baseline = self._query_live_identity_tier("I3", overrides="", canvas_probe_url=probe_url)
+            self.assertEqual(res_baseline["prefs"]["fpp_overrides"], "",
+                             "Baseline I3 must have empty fpp_overrides")
+            canvas_base = res_baseline["content"]["canvas_data"]
+            self.assertIsNotNone(canvas_base, "Must extract canvas data URL from probe page")
+            hash_base = hashlib.sha256(canvas_base.encode()).hexdigest()
+
+            # Target override: -CanvasRandomization (disable canvas noise for this instance)
+            res_override = self._query_live_identity_tier("I3", overrides="-CanvasRandomization", canvas_probe_url=probe_url)
+            self.assertEqual(
+                res_override["prefs"]["fpp_overrides"], "-CanvasRandomization",
+                "Target override must be dynamically configured in running engine"
+            )
+            canvas_over = res_override["content"]["canvas_data"]
+            self.assertIsNotNone(canvas_over, "Must extract canvas data URL with override")
+            hash_over = hashlib.sha256(canvas_over.encode()).hexdigest()
+
+            # Pref verification
+            self.assertNotEqual(
+                res_baseline["prefs"]["fpp_overrides"],
+                res_override["prefs"]["fpp_overrides"],
+                "Override preference must differ from baseline (before='', after='-CanvasRandomization')"
+            )
+
+            # Behavioral verification: Canvas SHA-256 hash differs between baseline and override
+            self.assertNotEqual(
+                hash_base, hash_over,
+                f"FPP canvas hash with override must differ from baseline: {hash_base} vs {hash_over}"
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
 
 
 if __name__ == "__main__":

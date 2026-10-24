@@ -1,11 +1,18 @@
 /**
  * Aegis Download Inspector - WebExtension Background Service
- * Intercepts downloads, evaluates signatures and filenames, and records quarantine events.
- * Implements persistent kill-switch and audit logging.
+ * Intercepts downloads, evaluates filename/metadata signatures, and records audit flags.
+ *
+ * NOTE ON PERMISSIONS & SCOPE:
+ * In the live WebExtension environment, downloads.onCreated only provides metadata
+ * (downloadItem.id, url, filename, mime, fileSize). Without broad host permissions (<all_urls>)
+ * and native file access, WebExtensions CANNOT inspect raw bytes or stream payloads.
+ * Therefore, live hooks perform metadata/filename analysis (double extensions, RTLO, risky extensions).
+ * True byte/magic inspection requires a privileged native helper or Gecko engine patch (SPIKE-007).
+ * Flagged items are logged and optionally paused, NOT quarantined to an isolated sandbox.
  */
 
 let isEnabled = true;
-const quarantineLog = [];
+const flagLog = [];
 const stats = {
   totalInspected: 0,
   flaggedCount: 0
@@ -13,12 +20,12 @@ const stats = {
 
 // Load saved configuration from local storage
 if (typeof browser !== "undefined" && browser.storage && browser.storage.local) {
-  browser.storage.local.get(["download_inspector_enabled", "download_quarantine_log"]).then(res => {
+  browser.storage.local.get(["download_inspector_enabled", "download_flag_log"]).then(res => {
     if (typeof res.download_inspector_enabled === "boolean") {
       isEnabled = res.download_inspector_enabled;
     }
-    if (Array.isArray(res.download_quarantine_log)) {
-      quarantineLog.push(...res.download_quarantine_log);
+    if (Array.isArray(res.download_flag_log)) {
+      flagLog.push(...res.download_flag_log);
     }
   }).catch(() => {
     // Fail safe to default enabled
@@ -26,7 +33,7 @@ if (typeof browser !== "undefined" && browser.storage && browser.storage.local) 
 }
 
 /**
- * Handle new download events
+ * Handle new download events (metadata-only in WebExtension sandbox)
  */
 async function handleDownloadCreated(downloadItem) {
   if (!isEnabled || !downloadItem) return;
@@ -34,7 +41,7 @@ async function handleDownloadCreated(downloadItem) {
   stats.totalInspected++;
   const filename = downloadItem.filename || downloadItem.url || "";
 
-  // Perform immediate metadata/filename inspection
+  // Perform immediate metadata/filename inspection (0 bytes available in WebExtension hook)
   const report = await inspectDownload(filename, new Uint8Array(0));
 
   if (report.level === "high" || report.level === "medium") {
@@ -48,13 +55,13 @@ async function handleDownloadCreated(downloadItem) {
       timestamp: new Date().toISOString()
     };
 
-    quarantineLog.push(entry);
+    flagLog.push(entry);
 
     if (browser.storage && browser.storage.local) {
-      browser.storage.local.set({ "download_quarantine_log": quarantineLog.slice(-50) });
+      browser.storage.local.set({ "download_flag_log": flagLog.slice(-50) });
     }
 
-    // Emit event or warning (P1 local storage audit)
+    // Flagged download: attempt pause if high risk
     if (report.level === "high" && browser.downloads && browser.downloads.pause) {
       try {
         await browser.downloads.pause(downloadItem.id);
@@ -78,7 +85,8 @@ if (typeof browser !== "undefined" && browser.runtime && browser.runtime.onMessa
       sendResponse({
         enabled: isEnabled,
         stats: { ...stats },
-        quarantineLog: [...quarantineLog]
+        flagLog: [...flagLog],
+        quarantineLog: [...flagLog] // Backwards compatibility alias
       });
       return true;
     }

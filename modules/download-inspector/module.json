@@ -14,7 +14,7 @@
     ]
   },
   "stores": [
-    "quarantine-index"
+    "flag-log"
   ],
   "network": "none",
   "min_surface_level": "S1",

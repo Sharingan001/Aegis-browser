@@ -54,10 +54,10 @@ class TestDownloadInspector(unittest.TestCase):
         data = json.loads(mod_json_path.read_text(encoding="utf-8"))
         self.assertEqual(data.get("id"), "download-inspector")
         self.assertEqual(data.get("name"), "Download Inspector")
-        self.assertEqual(data.get("privacy_class"), "P1", "Download Inspector must be Privacy Class P1 (local quarantine log)")
+        self.assertEqual(data.get("privacy_class"), "P1", "Download Inspector must be Privacy Class P1 (local flag log)")
         self.assertTrue(data.get("kill_switch"), "Module must declare kill_switch: true")
         self.assertEqual(data.get("network"), "none", "Module must declare network: none")
-        self.assertIn("quarantine-index", data.get("stores", []))
+        self.assertIn("flag-log", data.get("stores", []))
 
     def test_webextension_manifest_least_privilege(self):
         """Verify WebExtension manifest requests least possible privileges."""
@@ -261,6 +261,155 @@ class TestDownloadInspector(unittest.TestCase):
             except subprocess.TimeoutExpired:
                 proc.kill()
             subprocess.run(["rm", "-rf", prof_dir])
+
+    def test_live_downloads_oncreated_hook_metadata_inspection(self):
+        """
+        Verify that the live downloads.onCreated hook in the background script:
+        1. Catches a new download in the browser.
+        2. Evaluates filename metadata (double extension .pdf.exe) under least privileges.
+        3. Records a flag event into the persistent log and browser.storage.local.
+        4. Pauses the dangerous download via browser.downloads.pause().
+        """
+        import http.server
+        import threading
+
+        class DLHandler(http.server.SimpleHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-msdownload")
+                self.send_header("Content-Disposition", 'attachment; filename="invoice.pdf.exe"')
+                self.end_headers()
+                self.wfile.write(b"MZ\x90\x00" + b"0" * 64)
+
+            def log_message(self, *args):
+                pass
+
+        server = http.server.HTTPServer(("127.0.0.1", 0), DLHandler)
+        srv_port = server.server_address[1]
+        srv_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        srv_thread.start()
+
+        marionette_port = find_free_port()
+        prof_dir = tempfile.mkdtemp(prefix="aegis_dl_hook_test_")
+        dl_dir = tempfile.mkdtemp(prefix="aegis_dl_out_")
+
+        with open(os.path.join(prof_dir, "user.js"), "w") as f:
+            f.write(f'user_pref("marionette.enabled", true);\n')
+            f.write(f'user_pref("marionette.port", {marionette_port});\n')
+            f.write('user_pref("xpinstall.signatures.required", false);\n')
+            f.write('user_pref("extensions.autoDisableScopes", 0);\n')
+            f.write(f'user_pref("browser.download.dir", "{dl_dir}");\n')
+            f.write('user_pref("browser.download.folderList", 2);\n')
+            f.write('user_pref("browser.download.useDownloadDir", true);\n')
+            f.write('user_pref("browser.helperApps.neverAsk.saveToDisk", "application/x-msdownload");\n')
+
+        env = dict(os.environ)
+        env["AEGIS_SURFACE_TIER"] = "S1"
+        env["AEGIS_IDENTITY_TIER"] = "I1"
+
+        cmd = [
+            str(ESR_BIN),
+            "-profile", prof_dir,
+            "--no-remote",
+            "--headless",
+            "--marionette",
+            "--remote-allow-system-access"
+        ]
+
+        proc = subprocess.Popen(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(2.5)
+
+        s = socket.socket()
+        try:
+            s.connect(("127.0.0.1", marionette_port))
+            hdr = b""
+            while b":" not in hdr:
+                hdr += s.recv(1)
+            s.recv(int(hdr[:-1].decode()))
+
+            def send_recv(msg_id, cmd_name, params):
+                payload = json.dumps([0, msg_id, cmd_name, params])
+                s.sendall(f"{len(payload)}:{payload}".encode())
+                h = b""
+                while b":" not in h:
+                    h += s.recv(1)
+                l = int(h[:-1].decode())
+                body = b""
+                while len(body) < l:
+                    body += s.recv(l - len(body))
+                return json.loads(body.decode())
+
+            # 1. Start session & install extension
+            send_recv(1, "WebDriver:NewSession", {})
+            install_res = send_recv(2, "Addon:Install", {"path": str(MODULE_DIR), "temporary": True})
+            self.assertEqual(install_res[3]["value"], "download-inspector@aegis.local")
+
+            time.sleep(0.5)
+
+            # 2. Get manifest URL to enter extension execution context
+            send_recv(3, "Marionette:SetContext", {"value": "chrome"})
+            res = send_recv(4, "WebDriver:ExecuteScript", {
+                "script": 'return WebExtensionPolicy.getByID("download-inspector@aegis.local").getURL("manifest.json");',
+                "args": []
+            })
+            manifest_url = res[3]["value"]
+
+            # 3. Navigate into extension context
+            send_recv(5, "Marionette:SetContext", {"value": "content"})
+            send_recv(6, "WebDriver:Navigate", {"url": manifest_url})
+
+            # 4. Trigger download of suspicious file from local test server
+            trigger_script = f"""
+            const resolve = arguments[arguments.length - 1];
+            (async () => {{
+                try {{
+                    const dlId = await browser.downloads.download({{
+                        url: "http://127.0.0.1:{srv_port}/payload",
+                        filename: "suspicious_invoice.pdf.exe"
+                    }});
+                    // Allow downloads.onCreated listener to execute in background script
+                    await new Promise(r => setTimeout(r, 1500));
+                    
+                    const storage = await browser.storage.local.get(null);
+                    const status = await browser.runtime.sendMessage({{ type: "GET_STATUS" }});
+                    resolve({{ dlId, storage, status }});
+                }} catch (e) {{
+                    resolve({{ error: e.toString() }});
+                }}
+            }})();
+            """
+            dl_res = send_recv(7, "WebDriver:ExecuteAsyncScript", {"script": trigger_script, "args": []})
+            val = dl_res[3]["value"]
+
+            self.assertNotIn("error", val, f"Download trigger failed: {val.get('error')}")
+            status = val["status"]
+            self.assertTrue(status["enabled"])
+            self.assertGreaterEqual(status["stats"]["totalInspected"], 1, "Must inspect at least 1 download")
+            self.assertGreaterEqual(status["stats"]["flaggedCount"], 1, "Must flag suspicious download")
+
+            # Check flagLog entry
+            flag_entry = status["flagLog"][-1]
+            self.assertEqual(flag_entry["level"], "high")
+            self.assertTrue(any("double extension" in f for f in flag_entry["flags"]))
+            self.assertIn("suspicious_invoice.pdf.exe", flag_entry["filename"])
+
+            # Verify storage persistence
+            storage_entry = val["storage"]["download_flag_log"][-1]
+            self.assertEqual(storage_entry["level"], "high")
+            self.assertEqual(storage_entry["filename"], flag_entry["filename"])
+
+            send_recv(8, "WebDriver:DeleteSession", {})
+        finally:
+            s.close()
+            proc.terminate()
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            subprocess.run(["rm", "-rf", prof_dir])
+            subprocess.run(["rm", "-rf", dl_dir])
+            server.shutdown()
+            server.server_close()
 
 
 if __name__ == "__main__":

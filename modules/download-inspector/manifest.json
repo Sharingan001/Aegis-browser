@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Aegis Download Inspector",
   "version": "1.0.0",
-  "description": "Inspects downloads for magic signature mismatches, double extensions, and disguised executable payloads.",
+  "description": "Inspects download metadata (filenames, double extensions, RTLO, risky extensions) and maintains an audit log of flagged downloads.",
   "browser_specific_settings": {
     "gecko": {
       "id": "download-inspector@aegis.local",
@@ -20,5 +20,5 @@
     ],
     "persistent": true
   },
-  "notes": "Permission justification: downloads permission is required to observe and intercept downloaded files for format verification. storage is required to maintain local quarantine log and kill-switch persistence. Operates strictly offline with zero network transmissions (Privacy Class P1)."
+  "notes": "Permission justification: downloads permission is required to observe download metadata in downloads.onCreated and pause suspicious downloads. storage is required to maintain local audit log of flagged downloads and kill-switch state. Note: live hook inspects metadata only (filenames/extensions) because WebExtensions lack filesystem byte access without host permissions. Operates strictly offline with zero network transmissions (Privacy Class P1)."
 }

@@ -89,8 +89,12 @@ class TestLinkCleaner(unittest.TestCase):
         self.assertTrue(data.get("kill_switch"), "Module must declare kill_switch: true")
         self.assertEqual(data.get("network"), "none", "Module must declare network: none")
 
-    def test_webextension_manifest_least_privilege(self):
-        """Verify WebExtension manifest requests least possible privileges."""
+    def test_webextension_manifest_permissions_acknowledged_broad(self):
+        """
+        Verify WebExtension manifest permissions:
+        Acknowledge plainly that <all_urls> + webRequestBlocking is broad and NOT least privilege,
+        and verify that the manifest explicitly justifies why this broad capability is required.
+        """
         manifest_path = MODULE_DIR / "manifest.json"
         self.assertTrue(manifest_path.is_file(), "manifest.json missing")
 
@@ -99,19 +103,78 @@ class TestLinkCleaner(unittest.TestCase):
         self.assertEqual(data.get("name"), "Aegis Link Cleaner")
 
         perms = data.get("permissions", [])
-        # Permitted: webRequest, webRequestBlocking, storage, <all_urls>
+        # Broad interception permissions explicitly required for URL query rewriting across domains
         self.assertIn("webRequest", perms)
         self.assertIn("webRequestBlocking", perms)
+        self.assertIn("<all_urls>", perms)
         self.assertIn("storage", perms)
 
-        # Prohibited elevated permissions
+        # Prohibited elevated permissions unrelated to link sanitization
         self.assertNotIn("tabs", perms, "tabs permission is not required and must not be requested")
         self.assertNotIn("cookies", perms, "cookies permission must not be requested")
         self.assertNotIn("clipboardRead", perms, "clipboardRead must not be requested")
         self.assertNotIn("nativeMessaging", perms, "nativeMessaging must not be requested")
 
-        # Justification must be present in notes
-        self.assertIn("notes", data, "Manifest must document permission justification")
+        # Explicit acknowledgment in notes that <all_urls> + webRequestBlocking is broad and NOT least privilege
+        notes = data.get("notes", "")
+        self.assertIn("broad permissions", notes.lower(), "Manifest must plainly acknowledge permissions are broad")
+        self.assertIn("not least privilege", notes.lower(), "Manifest must honestly state it is not least privilege")
+        self.assertIn("declarativenetrequest", notes.lower(), "Manifest must justify why DNR cannot express prefix rules")
+
+    def test_cleaning_logic_per_site_keep(self):
+        """
+        Verify that per-site keep-lists allow benign sites using parameters such as
+        si (music/podcasts) and spm (e-commerce) to function without breakage,
+        while strictly stripping them on non-whitelisted sites.
+        """
+        js_code = (MODULE_DIR / "cleaner_logic.js").read_text(encoding="utf-8")
+
+        # Evaluate cleaner_logic.js in a JS runtime / Node or Python parity check
+        # We can test directly in Node or Python, and also in the browser runtime test
+        # Let's verify via Node or Python subprocess calling cleaner_logic.js
+        test_script = f"""
+        {js_code}
+        const perSiteKeep = {{
+            "shop.example.com": ["spm"],
+            "music.example.org": ["si"]
+        }};
+
+        // Case 1: Whitelisted shop site using spm (should preserve spm, strip utm_source)
+        const resShop = cleanLink("https://shop.example.com/item?id=42&spm=101.2.3&utm_source=promo", perSiteKeep);
+
+        // Case 2: Non-whitelisted site using spm (should strip both spm and utm_source)
+        const resOther = cleanLink("https://other.example.net/item?id=42&spm=101.2.3&utm_source=promo", perSiteKeep);
+
+        // Case 3: Whitelisted music site using si (should preserve si, strip fbclid)
+        const resMusic = cleanLink("https://music.example.org/track/99?si=abc123token&fbclid=xyz999", perSiteKeep);
+
+        // Case 4: Non-whitelisted site using si (should strip si)
+        const resTracker = cleanLink("https://tracker.example.com/log?si=abc123token", perSiteKeep);
+
+        console.log(JSON.stringify({{ resShop, resOther, resMusic, resTracker }}));
+        """
+        import subprocess
+        out = subprocess.check_output(["node", "-e", test_script], text=True)
+        res = json.loads(out)
+
+        # Case 1: shop.example.com retains spm
+        self.assertIn("spm=101.2.3", res["resShop"]["cleanedUrl"])
+        self.assertNotIn("utm_source", res["resShop"]["cleanedUrl"])
+        self.assertEqual(res["resShop"]["removedParams"], ["utm_source"])
+
+        # Case 2: other.example.net strips spm and utm_source
+        self.assertNotIn("spm", res["resOther"]["cleanedUrl"])
+        self.assertNotIn("utm_source", res["resOther"]["cleanedUrl"])
+        self.assertEqual(set(res["resOther"]["removedParams"]), {"spm", "utm_source"})
+
+        # Case 3: music.example.org retains si
+        self.assertIn("si=abc123token", res["resMusic"]["cleanedUrl"])
+        self.assertNotIn("fbclid", res["resMusic"]["cleanedUrl"])
+        self.assertEqual(res["resMusic"]["removedParams"], ["fbclid"])
+
+        # Case 4: tracker.example.com strips si
+        self.assertNotIn("si", res["resTracker"]["cleanedUrl"])
+        self.assertEqual(res["resTracker"]["removedParams"], ["si"])
 
     def test_cleaning_logic_matches_prototype(self):
         """Verify that JavaScript cleaner_logic.js contains all tracking parameters from prototype."""

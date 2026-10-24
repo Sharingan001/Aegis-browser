@@ -21,9 +21,34 @@ function cleanLink(rawUrl, keep = []) {
     return { cleanedUrl: rawUrl, removedParams: [] };
   }
 
-  const keepSet = new Set(
-    Array.from(keep || []).map(k => String(k).toLowerCase())
-  );
+  const keepSet = new Set();
+  if (keep) {
+    if (Array.isArray(keep) || keep instanceof Set) {
+      for (const k of keep) {
+        keepSet.add(String(k).toLowerCase());
+      }
+    } else if (typeof keep === "object") {
+      // Per-site keep map: { "example.com": ["spm"], "*": ["custom_param"] }
+      try {
+        const parsed = new URL(rawUrl);
+        const hostname = parsed.hostname.toLowerCase();
+        for (const [domain, params] of Object.entries(keep)) {
+          const dom = domain.toLowerCase();
+          if (dom === "*" || hostname === dom || hostname.endsWith("." + dom)) {
+            if (Array.isArray(params) || params instanceof Set) {
+              for (const p of params) {
+                keepSet.add(String(p).toLowerCase());
+              }
+            } else if (typeof params === "string") {
+              keepSet.add(params.toLowerCase());
+            }
+          }
+        }
+      } catch (e) {
+        // Fall back to empty keepSet on malformed URL
+      }
+    }
+  }
 
   try {
     const u = new URL(rawUrl);

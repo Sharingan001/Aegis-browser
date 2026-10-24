@@ -306,6 +306,26 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+# -- 13. Phase 2c/2d Banking Preset Extension Isolation Runtime Test
+echo "--- [13] Banking Preset Extension Isolation Runtime Test ---"
+if [ ! -f "$REPO_ROOT/firefox-esr/firefox" ]; then
+    echo "SKIPPED (requires firefox-esr): Firefox ESR binary not found at firefox-esr/firefox"
+    SKIPPED=$((SKIPPED + 1))
+elif [ -f "$REPO_ROOT/tests/axes/test_banking_tier.py" ]; then
+    if python3 -m unittest tests/axes/test_banking_tier.py -v 2>&1; then
+        echo "PASS: Banking preset extension isolation runtime tests passed"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: Banking preset extension isolation tests failed"
+        ERRORS+=("Banking preset extension isolation tests failed")
+        FAIL=$((FAIL + 1))
+    fi
+else
+    echo "FAIL: tests/axes/test_banking_tier.py missing"
+    ERRORS+=("tests/axes/test_banking_tier.py missing")
+    FAIL=$((FAIL + 1))
+fi
+
 echo ""
 
 # -- Summary ------------------------------------------------------------------
