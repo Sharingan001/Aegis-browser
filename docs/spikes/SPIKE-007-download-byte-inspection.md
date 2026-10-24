@@ -1,6 +1,6 @@
 # SPIKE-007: Byte-Level Download Inspection and Quarantine Architecture
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.1.0  
 **Date:** 2026-10-24  
 **Status:** DESIGN ONLY (Exploratory spike; no implementation until approved)  
 **Addresses:** Master Spec Part 5.8 (M8 Download Inspector), Part 5.2 row 8 (Quarantine integration)  
@@ -24,7 +24,7 @@ The WebExtension runtime **cannot read raw file bytes** for the following reason
 3. **Re-fetching is Unsound:** Even if `<all_urls>` were granted, re-fetching download URLs over HTTP/HTTPS is flawed:
    - Downloads often use single-use tokens, POST requests, or authenticated sessions that fail or mutate state on re-request.
    - Re-downloading wastes network bandwidth and does not guarantee that the re-fetched bytes match what Gecko wrote to disk.
-4. **Mislabeling "Quarantine":** The WebExtension can only log/flag metadata and call `browser.downloads.pause(downloadItem.id)`. It cannot isolate the file in a secure filesystem vault. Calling this "quarantine" was inaccurate; it is an **audit log and download pause** mechanism.
+4. **Mislabeling "Quarantine":** The WebExtension can only log/flag metadata and call `browser.downloads.pause(downloadItem.id)`. It cannot isolate the file in a secure filesystem vault. Calling this "quarantine" was inaccurate; it is an **audit log and download pause** mechanism. The storage key is strictly `download_flag_log`.
 
 ### 1.2 Constraint
 **Do NOT widen WebExtension permissions.** Adding `<all_urls>` or arbitrary native messaging to the extension manifest violates least-privilege principles and introduces a massive attack surface. Genuine byte-level inspection and file isolation must be handled outside the untrusted WebExtension sandbox.
@@ -42,13 +42,13 @@ flowchart TD
     end
 
     subgraph OptionA ["Option A: Privileged Native Helper (Phase 3 Launcher)"]
-        StagingDir[("Staging Directory<br/>/tmp/aegis-dl-staging/")]
+        StagingDir[("Per-User Staging Directory<br/>/run/user/UID/aegis/staging/<br/>Mode: 0700")]
         NativeDaemon["Aegis Download Daemon<br/>(Native Helper / Orchestrator)"]
         UserDL[("~/Downloads<br/>(Clean Files)")]
-        Vault[("Aegis Quarantine Vault<br/>~/.local/share/aegis/quarantine/<br/>Mode: 000")]
+        Vault[("Aegis Quarantine Vault<br/>~/.local/share/aegis/quarantine/<br/>Mode: 000 (Speed Bump)")]
     end
 
-    subgraph OptionB ["Option B: Gecko Engine Patch (Phase 3 Build)"]
+    subgraph OptionB ["Option B: Gecko Engine Patch [UNVERIFIED] (Phase 3 Build)"]
         StreamHook["nsIHelperAppLauncherDialog /<br/>DownloadCore.sys.mjs Patch"]
         DirectQuarantine["Direct In-Memory Divert / Abort"]
     end
@@ -68,28 +68,46 @@ flowchart TD
 ## 3. Detailed Option Evaluation
 
 ### Option A: Privileged Native Helper Daemon
-In Option A, the browser is configured via preferences (`browser.download.dir`, `browser.download.folderList: 2`) to write all incoming downloads into a private, monitored staging directory (e.g. `/run/user/<UID>/aegis/staging/` or `~/.local/share/aegis/staging/`).
+In Option A, the browser is configured via preferences (`browser.download.dir`, `browser.download.folderList: 2`) to write all incoming downloads into a private, monitored staging directory located strictly in the **per-user runtime directory** (`$XDG_RUNTIME_DIR/aegis/staging/` or `/run/user/<UID>/aegis/staging/` with permissions `0700`).
 
-1. **Flow:**
-   - Gecko streams the download into the staging directory.
-   - When download completes (`downloads.onChanged` [state: 'complete'] or inotify watch), the Aegis Native Helper (part of the Aegis Orchestrator, see [SPIKE-006](SPIKE-006-launcher-orchestrator.md)) reads the first 4KB of the file.
+> [!CAUTION]
+> **Never use `/tmp`:** Global shared `/tmp` is insecure on multi-user Linux hosts due to symlink attacks, race conditions, and world-readable default masks. Staging must reside strictly in the user's isolated `XDG_RUNTIME_DIR`.
+
+1. **Disable Open-After-Download (Mandatory Invariant):**
+   - The browser and desktop must NOT automatically open or execute downloaded files prior to verification.
+   - Preferences locked in `aegis.cfg`:
+     - `browser.download.openImmediately: false`
+     - `browser.helperApps.neverAsk.openFile: ""`
+     - Desktop MIME handler associations (`xdg-open`) suppressed in staging.
+2. **Flow:**
+   - Gecko streams the download into `/run/user/<UID>/aegis/staging/`.
+   - When download completes (`downloads.onChanged` [state: 'complete'] or inotify `IN_CLOSE_WRITE`), the Aegis Native Helper reads the first 4KB of the file.
    - **Signature Verification:** Validates magic bytes (MZ, ELF, Mach-O, PDF, ZIP, PNG, etc.) against the claimed extension.
    - **Integrity Hash:** Calculates full file SHA-256 hash using native cryptographic libraries.
    - **Triage:**
      - **Clean:** Atomic `rename()` / `move` into `~/Downloads/`.
      - **Flagged / Malicious:** Atomic move into `~/.local/share/aegis/quarantine/`, permissions stripped (`chmod 0000`), logged to Flight Recorder.
-2. **Security & Privilege Boundaries:**
-   - WebExtension remains strictly least-privilege (no host permissions).
-   - Helper runs in user space but operates out-of-process from the browser rendering engine.
-   - File is unreadable by desktop applications while in staging and quarantine.
-3. **Limitations:**
-   - File bytes briefly reside on disk in staging before inspection.
-   - Requires the launcher/orchestrator daemon to be running.
+3. **TOCTOU (Time-of-Check to Time-of-Use) Analysis:**
+   - *Risk:* A malicious local process or user desktop indexer attempts to read or execute the file while Gecko is writing it or between the time the inspection check completes and the file is moved.
+   - *Mitigations:*
+     - Staging directory is created with mode `0700` owned exclusively by `<UID>`.
+     - The helper opens the file with exclusive locks (`O_RDONLY | O_NOFOLLOW | O_CLOEXEC`), inspects file descriptors (`fstat`), and verifies inode identity before and after hashing.
+     - Moving to `~/Downloads/` or `quarantine/` uses atomic filesystem `renameat2(..., RENAME_NOREPLACE)`.
+4. **Honest Appraisal of `chmod 0000`:**
+   - Stripping permissions (`chmod 0000`) is **only a speed bump**.
+   - It prevents accidental desktop double-clicking or inadvertent script execution.
+   - It is **NOT a true security boundary** against adversarial code already executing under the same user UID, because any process owned by `<UID>` can issue a `chmod(..., 0644)` syscall to restore read/execute permissions. Genuine process isolation requires DAC/MAC sandboxing (Bubblewrap / SELinux / AppArmor).
+5. **Limitations:**
+   - Requires the local launcher/orchestrator daemon to be running.
 
-### Option B: Gecko Engine Patch in Download Pipeline
-In Option B, inspection is embedded directly into Gecko's download pipeline source code (`toolkit/components/downloads/DownloadCore.sys.mjs` and `uriloader/exthandler/nsIHelperAppLauncherDialog.cpp`):
+### Option B: Gecko Engine Patch in Download Pipeline [UNVERIFIED]
 
-1. **Flow:**
+> [!WARNING]
+> **Option B is UNVERIFIED:** This approach represents a hypothetical design hypothesis. It has not been implemented or verified against the Mozilla ESR 153.5.1 source tree. Full evaluation requires a dedicated C++ engine spike and custom compilation pipeline in Phase 3 ([BUILD.md](../../BUILD.md)).
+
+In Option B, inspection would be embedded directly into Gecko's download pipeline source code (`toolkit/components/downloads/DownloadCore.sys.mjs` and `uriloader/exthandler/nsIHelperAppLauncherDialog.cpp`):
+
+1. **Hypothetical Flow:**
    - Gecko's download channel streams bytes through an in-memory `nsIStreamListener` tee.
    - As the initial chunk arrives (first 4KB), Gecko checks the magic signature against the destination filename.
    - If a high-risk mismatch is detected (e.g. `.pdf` containing `MZ` binary header):
@@ -99,23 +117,24 @@ In Option B, inspection is embedded directly into Gecko's download pipeline sour
 2. **Security & Privilege Boundaries:**
    - Strongest possible security guarantee: malicious payloads never touch disk storage.
    - Fully integrated into browser UI without external helper processes.
-3. **Limitations:**
-   - Requires maintainable C++/JS patches to upstream Mozilla source code ([BUILD.md](../../BUILD.md)).
-   - Must be re-tested and re-based across ESR major versions.
-   - Scheduled for Phase 3 (Source Engine Builds).
+3. **Limitations & Open Questions:**
+   - **Unverified:** Requires deep modification of Gecko internal stream listeners and `nsIHelperAppLauncherDialog`.
+   - High maintenance overhead and patch drift across ESR major updates.
+   - Scheduled for experimental investigation in Phase 3.
 
 ---
 
 ## 4. Comparison Matrix
 
-| Evaluation Dimension | WebExtension (Current Live) | Option A: Native Helper | Option B: Engine Patch |
+| Evaluation Dimension | WebExtension (Current Live) | Option A: Native Helper | Option B: Engine Patch [UNVERIFIED] |
 | :--- | :--- | :--- | :--- |
 | **Inspection Scope** | Metadata only (name, claimed ext, size) | Byte magic (first 4KB) + SHA-256 | Stream magic + on-the-fly SHA-256 |
 | **WebExtension Permissions** | Least privilege (`downloads`, `storage`) | Least privilege (no changes) | None required (engine native) |
-| **Tamper Resistance** | Low (user can unpause or open file) | High (isolated staging directory) | Maximum (payload never touches disk) |
-| **True Quarantine** | No (only pause / audit log) | Yes (isolated vault, chmod 000) | Yes (immediate cancel/divert) |
+| **Tamper Resistance** | Low (user can unpause or open file) | High (isolated staging directory, 0700) | Maximum (payload never touches disk) |
+| **True Quarantine** | No (only pause / audit log) | Speed bump (`chmod 000`, isolated vault) | Yes (immediate cancel/divert) |
+| **TOCTOU Vulnerability** | N/A (does not inspect bytes) | Mitigated via atomic `rename` & `0700` | Eliminated (in-memory stream check) |
 | **Implementation Complexity** | Zero (already built) | Moderate (Python/Rust IPC daemon) | High (Gecko C++ build pipeline) |
-| **Phase Target** | **Phase 2d (active)** | **Phase 3 (Orchestrator)** | **Phase 3 (Engine Build)** |
+| **Status / Target** | **Phase 2d (active)** | **Phase 3 (Orchestrator)** | **Phase 3 (Unverified Design)** |
 
 ---
 
@@ -123,9 +142,9 @@ In Option B, inspection is embedded directly into Gecko's download pipeline sour
 
 1. **Terminology Clarification (Phase 2d):**
    - The current WebExtension module is documented accurately as **Download Inspector (Metadata Audit & Pause)**.
-   - References to "quarantine" in the WebExtension are renamed to "flag log" / "audit log".
+   - The storage key is strictly `download_flag_log` (all `download_quarantine_log` aliases removed).
 2. **Zero Permission Expansion:**
    - Under no circumstances will `<all_urls>` or `nativeMessaging` be added to `modules/download-inspector/manifest.json` in Phase 2d.
 3. **Phase 3 Implementation Path:**
-   - Implement **Option A** within the Aegis Orchestrator daemon ([SPIKE-006](SPIKE-006-launcher-orchestrator.md)) to provide filesystem-level quarantine staging without engine modifications.
-   - Evaluate **Option B** as an upstream patch during custom Gecko engine compilation ([BUILD.md](../../BUILD.md)).
+   - Implement **Option A** within the Aegis Orchestrator daemon ([SPIKE-006](SPIKE-006-launcher-orchestrator.md)) using `$XDG_RUNTIME_DIR/aegis/staging/` to provide filesystem staging and hash verification without engine modifications.
+   - Investigate **Option B** as a research spike during custom Gecko engine compilation ([BUILD.md](../../BUILD.md)).

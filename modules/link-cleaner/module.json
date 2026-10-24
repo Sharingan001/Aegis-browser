@@ -2,7 +2,7 @@
   "id": "link-cleaner",
   "name": "Link Cleaner",
   "version": "1.0.0",
-  "privacy_class": "P0",
+  "privacy_class": "P1",
   "permissions": [
     "webRequest",
     "webRequestBlocking",

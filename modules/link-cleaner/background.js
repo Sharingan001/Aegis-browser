@@ -5,24 +5,39 @@
  */
 
 let isEnabled = true;
-let keepList = [];
+let keepMap = {};
 const stats = {
   cleanedRequests: 0,
   removedParamsTotal: 0
 };
 
-// Load saved configuration from local storage
+// Load saved configuration from local storage (Privacy Class P1)
 if (typeof browser !== "undefined" && browser.storage && browser.storage.local) {
-  browser.storage.local.get(["link_cleaner_enabled", "link_cleaner_keep_list"]).then(res => {
+  browser.storage.local.get(["link_cleaner_enabled", "link_cleaner_keep_map", "link_cleaner_keep_list"]).then(res => {
     if (typeof res.link_cleaner_enabled === "boolean") {
       isEnabled = res.link_cleaner_enabled;
     }
-    if (Array.isArray(res.link_cleaner_keep_list)) {
-      keepList = res.link_cleaner_keep_list;
+    if (res.link_cleaner_keep_map && typeof res.link_cleaner_keep_map === "object") {
+      keepMap = res.link_cleaner_keep_map;
+    } else if (Array.isArray(res.link_cleaner_keep_list)) {
+      keepMap = res.link_cleaner_keep_list;
     }
   }).catch(() => {
     // Fail safe to default enabled state
   });
+
+  if (browser.storage.onChanged) {
+    browser.storage.onChanged.addListener((changes, area) => {
+      if (area === "local") {
+        if (changes.link_cleaner_enabled) {
+          isEnabled = Boolean(changes.link_cleaner_enabled.newValue);
+        }
+        if (changes.link_cleaner_keep_map) {
+          keepMap = changes.link_cleaner_keep_map.newValue || {};
+        }
+      }
+    });
+  }
 }
 
 /**
@@ -39,7 +54,7 @@ function handleBeforeRequest(details) {
     return {};
   }
 
-  const result = cleanLink(details.url, keepList);
+  const result = cleanLink(details.url, keepMap);
   if (result.removedParams && result.removedParams.length > 0) {
     stats.cleanedRequests++;
     stats.removedParamsTotal += result.removedParams.length;
@@ -68,7 +83,8 @@ if (typeof browser !== "undefined" && browser.runtime && browser.runtime.onMessa
     if (msg.type === "GET_STATUS") {
       sendResponse({
         enabled: isEnabled,
-        keepList: [...keepList],
+        keepMap: (typeof keepMap === "object" && !Array.isArray(keepMap)) ? { ...keepMap } : keepMap,
+        keepList: Array.isArray(keepMap) ? [...keepMap] : Object.keys(keepMap),
         stats: { ...stats }
       });
       return true;
@@ -83,17 +99,18 @@ if (typeof browser !== "undefined" && browser.runtime && browser.runtime.onMessa
       return true;
     }
 
-    if (msg.type === "SET_KEEP_LIST") {
-      keepList = (typeof msg.keepList === "object" && msg.keepList !== null) ? msg.keepList : [];
+    if (msg.type === "SET_KEEP_MAP" || msg.type === "SET_KEEP_LIST") {
+      const target = (msg.keepMap !== undefined) ? msg.keepMap : msg.keepList;
+      keepMap = (typeof target === "object" && target !== null) ? target : {};
       if (browser.storage && browser.storage.local) {
-        browser.storage.local.set({ "link_cleaner_keep_list": keepList });
+        browser.storage.local.set({ "link_cleaner_keep_map": keepMap });
       }
-      sendResponse({ success: true, keepList: keepList });
+      sendResponse({ success: true, keepMap: keepMap });
       return true;
     }
 
     if (msg.type === "CLEAN_URL") {
-      const res = cleanLink(msg.url, msg.keep || keepList);
+      const res = cleanLink(msg.url, msg.keep || keepMap);
       sendResponse(res);
       return true;
     }

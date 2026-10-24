@@ -85,7 +85,7 @@ class TestLinkCleaner(unittest.TestCase):
         data = json.loads(mod_json_path.read_text(encoding="utf-8"))
         self.assertEqual(data.get("id"), "link-cleaner")
         self.assertEqual(data.get("name"), "Link Cleaner")
-        self.assertEqual(data.get("privacy_class"), "P0", "Link Cleaner must be Privacy Class P0 (stores nothing external)")
+        self.assertEqual(data.get("privacy_class"), "P1", "Link Cleaner must be Privacy Class P1 (stores user keep-list in local storage)")
         self.assertTrue(data.get("kill_switch"), "Module must declare kill_switch: true")
         self.assertEqual(data.get("network"), "none", "Module must declare network: none")
 

@@ -246,3 +246,26 @@ invalid mozconfig flags on a constrained-disk system (~86 GB free).
 
 **Spec references:** Parts 5.2, 5.5, 6.2, docs/spec-amendments/A-001.md, docs/spec-amendments/A-003.md.
 
+---
+
+## D-015 — 2026-10-24 — Banking Instance Extension Policy: Strict Zero Extensions
+
+**Decision:**
+1. **Strict Zero Extensions in Banking:** Adopt Proposal 4 (zero extensions by design) for the Banking preset instance. The banking instance operates with strictly zero WebExtensions loaded or active, including Aegis built-in modules (`link-cleaner`, `download-inspector`, `session-sweeper`, etc.).
+2. **Technical Enforcement:** Configured via `extensions.enabledScopes: 0` and `extensions.autoDisableScopes: 15`. In Gecko ESR 153.5.1esr, `AddonManager` scopes are bitwise flags:
+   - `SCOPE_PROFILE = 1`
+   - `SCOPE_USER = 2`
+   - `SCOPE_APPLICATION = 4`
+   - `SCOPE_SYSTEM = 8`
+   - `SCOPE_ALL = 31`
+   Setting `extensions.enabledScopes: 0` masks all scopes, disabling all extensions across all directories.
+3. **Rejection of Proposal 1 (policies.json ExtensionSettings):**
+   Proposal 1 (using enterprise `ExtensionSettings` allowlists to permit built-in extensions in banking while blocking others) was evaluated and REJECTED:
+   - **Conflict with Decision D-011:** D-011 establishes that `policies.json` is a single, shared, immutable enterprise policy across all Aegis instances. Introducing per-instance `policies.json` variants directly contradicts D-011.
+   - **Attack Surface Minimization:** Master Spec Part 5.5 explicitly designates Anchored Cells as "Extensions: Off". Financial transactions require absolute DOM, header, and network purity. A zero-extension environment guarantees zero tampering from any extension background script or content script.
+
+**Why:** Adheres strictly to Master Spec Part 5.5 without violating Decision D-011, eliminates extension whitelist maintenance, and guarantees zero script injection or interception on banking portals.
+
+**Spec references:** Parts 5.2, 5.5, Decision D-011, Decision D-014.
+
+

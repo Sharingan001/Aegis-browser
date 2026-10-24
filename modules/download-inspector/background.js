@@ -85,8 +85,7 @@ if (typeof browser !== "undefined" && browser.runtime && browser.runtime.onMessa
       sendResponse({
         enabled: isEnabled,
         stats: { ...stats },
-        flagLog: [...flagLog],
-        quarantineLog: [...flagLog] // Backwards compatibility alias
+        flagLog: [...flagLog]
       });
       return true;
     }

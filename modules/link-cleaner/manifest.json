@@ -22,5 +22,5 @@
     ],
     "persistent": true
   },
-  "notes": "Permission justification: webRequest, webRequestBlocking, and <all_urls> are broad permissions that grant full HTTP request interception and rewriting rights. This is intentionally NOT least privilege: these permissions are strictly required because declarativeNetRequest (DNR) static rules in Gecko ESR 153 cannot express prefix matching (utm_*, pk_*, mtm_*, hsa_*) or dynamic per-site/per-domain keep-lists. Operates strictly offline with zero external network access (Privacy Class P0)."
+  "notes": "Permission justification: webRequest, webRequestBlocking, and <all_urls> are broad permissions that grant full HTTP request interception and rewriting rights. This is intentionally NOT least privilege: these permissions are strictly required because declarativeNetRequest (DNR) static rules in Gecko ESR 153 cannot express prefix matching (utm_*, pk_*, mtm_*, hsa_*) or dynamic per-site/per-domain keep-lists. Operates strictly offline with zero external network access (Privacy Class P1 due to local keep-list storage)."
 }
