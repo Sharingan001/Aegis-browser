@@ -1,0 +1,26 @@
+{
+  "manifest_version": 2,
+  "name": "Aegis Link Cleaner",
+  "version": "1.0.0",
+  "description": "Strips tracking parameters (utm_*, fbclid, gclid, etc.) from navigation URLs.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "link-cleaner@aegis.local",
+      "strict_min_version": "153.0"
+    }
+  },
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking",
+    "storage",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "cleaner_logic.js",
+      "background.js"
+    ],
+    "persistent": true
+  },
+  "notes": "Permission justification: webRequest and webRequestBlocking are required to inspect and redirect navigation requests before dispatch. storage is used for user keep-list and kill-switch persistence. Operates strictly offline with zero external network access (Privacy Class P0)."
+}

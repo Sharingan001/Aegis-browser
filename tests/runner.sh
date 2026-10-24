@@ -286,6 +286,28 @@ fi
 
 echo ""
 
+# -- 12. Phase 2d Tier-1 Built-in Extensions (Link Cleaner & Download Inspector)
+echo "--- [12] Phase 2d Tier-1 Built-in Extensions (Link Cleaner & Download Inspector) ---"
+if [ ! -f "$REPO_ROOT/firefox-esr/firefox" ]; then
+    echo "SKIPPED (requires firefox-esr): Firefox ESR binary not found at firefox-esr/firefox"
+    SKIPPED=$((SKIPPED + 1))
+elif [ -f "$REPO_ROOT/tests/modules/test_link_cleaner.py" ] && [ -f "$REPO_ROOT/tests/modules/test_download_inspector.py" ]; then
+    if python3 -m unittest tests/modules/test_link_cleaner.py tests/modules/test_download_inspector.py -v 2>&1; then
+        echo "PASS: Phase 2d Tier-1 Built-in Extensions (Link Cleaner & Download Inspector) passed"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: Phase 2d module tests failed"
+        ERRORS+=("Phase 2d module tests failed")
+        FAIL=$((FAIL + 1))
+    fi
+else
+    echo "FAIL: Module test files missing"
+    ERRORS+=("Module test files missing")
+    FAIL=$((FAIL + 1))
+fi
+
+echo ""
+
 # -- Summary ------------------------------------------------------------------
 echo "=== Summary ==="
 echo "PASS: $PASS"

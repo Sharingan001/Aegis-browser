@@ -1,0 +1,25 @@
+{
+  "id": "download-inspector",
+  "version": "1.0.0",
+  "name": "Download Inspector",
+  "privacy_class": "P1",
+  "permissions": [
+    "downloads",
+    "storage"
+  ],
+  "cells": {
+    "default": "all",
+    "disabled_in": [
+      "detonation-minimal"
+    ]
+  },
+  "stores": [
+    "quarantine-index"
+  ],
+  "network": "none",
+  "min_surface_level": "S1",
+  "kill_switch": true,
+  "tests": [
+    "tests/modules/test_download_inspector.py"
+  ]
+}
