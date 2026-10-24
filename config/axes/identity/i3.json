@@ -13,12 +13,12 @@
       },
       "locked": true,
       "override_of": "I1",
-      "override_reason": "Enable Gecko FPP site-keyed canvas noise and font visibility protections (D-012, A-002)",
+      "override_reason": "Enable Gecko FPP engine-default protections (font visibility, timer precision, and other default FPP targets). NOTE (2026-10-24): pixel-level testing shows the ESR 153.5.1 default FPP target set does NOT include canvas randomization; canvas noise claims withdrawn pending owner decision (A-002 section 0, VERIFY-I-005).",
       "verify": {
         "type": "runtime-check",
         "test": "tests/axes/test_identity_levels.py"
       },
-      "user_cost": "Deterministic canvas perturbation injected per eTLD+1 site"
+      "user_cost": "FPP engine-default protections apply; canvas pixels remain native on ESR 153.5.1 (no canvas randomization by default)"
     },
     {
       "id": "net.referer_trimming",

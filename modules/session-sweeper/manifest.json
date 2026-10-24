@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "Aegis Session Sweeper",
-  "version": "1.0.0",
-  "description": "Selectively purges expired site browsing data while preserving user allow-lists.",
+  "version": "1.1.0",
+  "description": "Opt-in selective purger for stale site browsing data (older than N days of inactivity), never for open tabs or allow-listed domains.",
   "applications": {
     "gecko": {
       "id": "session-sweeper@aegis.local",
@@ -12,7 +12,9 @@
   "permissions": [
     "browsingData",
     "storage",
-    "alarms"
+    "alarms",
+    "history",
+    "tabs"
   ],
   "background": {
     "scripts": [
@@ -21,5 +23,10 @@
     ],
     "persistent": true
   },
-  "notes": "Permission justification: browsingData is required to clear stale cookies, localStorage, and cache for origins older than the retention threshold; storage is required to persist user allow-lists and retention preferences (Privacy Class P1); alarms is used for periodic background sweep scheduling. Operates completely offline with zero external network connectivity."
+  "notes": "Permissions (complete list, all used): browsingData = per-origin purge via browser.browsingData.remove with NO 'since' cutoff (a cutoff deletes data NEWER than a timestamp, the opposite of a stale purge, and the API cannot enumerate per-origin ages). storage = config, opt-in flag, and the last-interaction ledger (Privacy Class P1). alarms = daily scheduled sweep. history = browser.history.onVisited records last-interaction per origin. tabs = browser.tabs.query reads open-tab URLs ONLY to guarantee data for sites with an open tab is never deleted; tab URLs are never recorded or transmitted. First use is opt-in with a preview of what would be deleted (PREVIEW_SWEEP). No host permissions. No network access.",
+  "externally_connectable": {
+    "ids": [
+      "command-palette@aegis.local"
+    ]
+  }
 }

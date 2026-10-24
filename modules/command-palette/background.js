@@ -25,6 +25,37 @@ if (typeof browser !== "undefined" && browser.storage && browser.storage.local) 
   }
 }
 
+// Aegis built-in module IDs (cross-module messaging targets / allowlist)
+const AEGIS_MODULE_IDS = new Set([
+  "command-palette@aegis.local",
+  "session-sweeper@aegis.local",
+  "site-xray@aegis.local",
+  "link-cleaner@aegis.local",
+  "download-inspector@aegis.local"
+]);
+const SITE_XRAY_ID = "site-xray@aegis.local";
+const SESSION_SWEEPER_ID = "session-sweeper@aegis.local";
+
+/**
+ * Send a message to another Aegis module (cross-extension messaging).
+ * Receivers verify sender.id against their own Aegis allowlist and are
+ * reachable only via externally_connectable in their manifests.
+ * @param {string} targetId
+ * @param {Object} msg
+ * @returns {Promise<Object>} { ok, response|error }
+ */
+async function messageAegisModule(targetId, msg) {
+  if (!AEGIS_MODULE_IDS.has(targetId)) {
+    return { ok: false, error: "target_not_in_aegis_allowlist" };
+  }
+  try {
+    const response = await browser.runtime.sendMessage(targetId, msg);
+    return { ok: true, response: response };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
 /**
  * Executes a registered command action.
  * @param {string} commandId
@@ -48,13 +79,23 @@ async function executeCommand(commandId, context = {}) {
       result.detail = "Initiated URL cleaning for active tab";
       break;
 
-    case "inspect-site-xray":
-      result.detail = "Triggered site security posture inspection";
+    case "inspect-site-xray": {
+      // Cross-module call: site-xray verifies our sender.id against its
+      // Aegis allowlist before responding.
+      const res = await messageAegisModule(SITE_XRAY_ID, { type: "GET_TAB_POSTURE" });
+      result.detail = "Queried site-xray posture";
+      result.crossModule = { ok: res.ok, response: res.response, error: res.error };
       break;
+    }
 
-    case "trigger-session-sweep":
+    case "trigger-session-sweep": {
+      // Cross-module call: the sweeper is opt-in gated and will refuse any
+      // live purge until the user has opted in.
+      const res = await messageAegisModule(SESSION_SWEEPER_ID, { type: "TRIGGER_SWEEP" });
       result.detail = "Dispatched session sweep trigger";
+      result.crossModule = { ok: res.ok, response: res.response, error: res.error };
       break;
+    }
 
     case "view-tier-posture":
       result.detail = "Queried active tier configuration";
@@ -62,6 +103,10 @@ async function executeCommand(commandId, context = {}) {
 
     case "open-isolated-cell":
       result.detail = "Opened new isolated container cell";
+      break;
+
+    case "toggle-palette":
+      result.detail = "Palette toggled";
       break;
 
     default:
@@ -90,7 +135,12 @@ if (typeof browser !== "undefined" && browser.runtime && browser.runtime.onMessa
       sendResponse({
         enabled: isEnabled,
         commandsCount: BUILTIN_COMMANDS.length,
-        executionLogCount: executionLog.length
+        executionLogCount: executionLog.length,
+        executionLogTail: executionLog.slice(-5).map(e => ({
+          commandId: e.commandId,
+          success: e.success,
+          timestamp: e.timestamp
+        }))
       });
       return true;
     }

@@ -1,16 +1,15 @@
 {
   "id": "site-xray",
   "name": "Site X-ray",
-  "version": "1.0.0",
-  "privacy_class": "P0",
+  "version": "1.1.0",
+  "privacy_class": "P1",
   "permissions": [
     "webRequest",
-    "tabs",
     "storage",
     "<all_urls>"
   ],
   "kill_switch": true,
   "network": "none",
   "tier": 1,
-  "description": "Passive security posture inspector (observes response headers: HSTS, CSP, X-Content-Type-Options, cookie security flags) for visited tabs."
+  "description": "Passive security posture inspector (HSTS, CSP, X-Content-Type-Options, cookie security flags) for visited tabs. Privacy Class P1: stores local configuration only; posture records are in-memory booleans/counts plus origin - header values and cookie names are never stored or logged."
 }

@@ -73,6 +73,18 @@ In Option A, the browser is configured via preferences (`browser.download.dir`, 
 > [!CAUTION]
 > **Never use `/tmp`:** Global shared `/tmp` is insecure on multi-user Linux hosts due to symlink attacks, race conditions, and world-readable default masks. Staging must reside strictly in the user's isolated `XDG_RUNTIME_DIR`.
 
+> [!IMPORTANT]
+> **Ownership invariant (2026-10-24 correction):** The staging directory MUST be
+> owned by the invoking user (the same UID that runs the Aegis orchestrator and
+> the browser), with mode `0700` — **never root**. The download daemon is a
+> per-user process; it must never require, request, or run with root
+> privileges. The orchestrator MUST verify at creation time (fail closed) that:
+> `$XDG_RUNTIME_DIR/aegis` and `$XDG_RUNTIME_DIR/aegis/staging` are owned by
+> the current UID (EUID == st_uid) and have mode `0700`; any mismatch (root
+> ownership, group/other bits set, symlinked path) aborts the staging setup and
+> the download flow fails closed. Note: `$XDG_RUNTIME_DIR` itself is created by
+> the login manager (systemd) with user ownership — Aegis must never relax it.
+
 1. **Disable Open-After-Download (Mandatory Invariant):**
    - The browser and desktop must NOT automatically open or execute downloaded files prior to verification.
    - Preferences locked in `aegis.cfg`:

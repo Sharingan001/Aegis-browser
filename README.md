@@ -3,7 +3,7 @@
 [![Aegis CI](https://github.com/Sharingan001/Aegis-browser/actions/workflows/ci.yml/badge.svg)](https://github.com/Sharingan001/Aegis-browser/actions/workflows/ci.yml)
 [![Engine: Firefox ESR](https://img.shields.io/badge/engine-Firefox_ESR_153.5.1esr-orange.svg)](https://www.mozilla.org/en-US/firefox/organizations/)
 [![License: MPL 2.0](https://img.shields.io/badge/license-MPL_2.0-blue.svg)](https://www.mozilla.org/en-US/MPL/2.0/)
-[![Status: Phase 2d Active](https://img.shields.io/badge/status-Phase_2d_Active-brightgreen.svg)](docs/spec/part-13-unified-roadmap.md)
+[![Status: Phase 2d Complete](https://img.shields.io/badge/status-Phase_2d_Complete-brightgreen.svg)](docs/spec/part-13-unified-roadmap.md)
 
 A privacy- and security-first desktop browser based on the **Gecko** engine (Mozilla Firefox ESR). Aegis provides multi-level attack-surface reduction, isolated task-specific **Cells**, adaptive phishing protection (Link Guard), and an explainable, auditable security architecture.
 
@@ -35,7 +35,7 @@ Aegis organizes browser protections along three independent, cumulative axes:
                                   │
                                   └────────────────────────► [I] Identity (Fingerprinting)
                                  /    I1: Native (unperturbed)
-                                /     I3: Site-Keyed Noise (FPP per-site canvas noise)
+                                /     I3: FPP Baseline (no canvas noise on ESR 153.5.1)
                                /      I2: Uniform (RFP, intended to resemble, unmeasured)
                               ▼       I4: Minimal-Signals (passive non-script signals hardened)
                      [N] Network (Routing)
@@ -59,7 +59,7 @@ Aegis organizes browser protections along three independent, cumulative axes:
 
 ### 3. Axis I: Identity (What fingerprinting surfaces observe)
 * **I1 (Native):** Standard platform headers and capabilities; no fingerprint noise. Referer: full URL; WebRTC: host candidates exposed.
-* **I3 (Site-Keyed Noise):** Gecko FPP (`privacy.fingerprintingProtection`) with site-keyed canvas noise. Remote overrides locked false (D-012). Referer trimmed to origin. WebRTC host candidates suppressed. Preserves local timezone and native window geometry.
+* **I3 (FPP Baseline):** Gecko FPP (`privacy.fingerprintingProtection`) enabled for its engine-default targets (font visibility, timer precision, and others), with remote overrides locked false (D-012). Referer trimmed to origin. WebRTC host candidates suppressed. Preserves local timezone and native window geometry. **HONEST LIMIT (2026-10-24, pixel-level test):** the ESR 153.5.1 default FPP target set does NOT include canvas randomization — canvas pixels are identical to I1 native, on loopback and non-loopback origins alike, and the `+CanvasRandomization`/`+EfficientCanvasRandomization` overrides have no effect on this build (only `+AllTargets` enables per-readback random noise). The I3 name/mechanism is under owner re-decision (A-002 section 0, VERIFY-I-005).
 * **I2 (Uniform):** `privacy.resistFingerprinting` enabled. UTC timezone, quantized viewport (letterboxing), ~16.67ms timer clamping, spoofed hardware metrics. RFP, intended to resemble Tor Browser defaults, unmeasured crowd.
 * **I4 (Minimal-Signals):** Extends I2 with hardening of **non-script passive signals** reachable even when JavaScript is disabled: Accept-Language header normalized to `en-US, en`; remote font loading disabled; cross-origin referrer policy restricted to origin-only. CSS media query normalization (color scheme, resolution, pointer) tracked as OPEN (no pref available in ESR 153, Phase 3).
 
@@ -106,6 +106,8 @@ Runtime verification on Firefox ESR 153.5.1esr confirmed that compiler and proxy
 | Omitted-identity fail-closed test | `test_identity_levels.py::test_identity_omitted_fails_closed_per_surface` | Proves I4 fail-closed on every surface tier when identity is unset |
 | Spec coverage matrix (Part 5.2 + 5.3) | `docs/SPEC_COVERAGE.md` | Four-level grades: Behavior-tested / Pref verified live / Config only / Not yet |
 | Cell Indicator WebExtension | `ui/extensions/cell-indicator/` | Placeholder posture display with honest language lint |
+| Tier-1 built-in extensions (all 5) | `modules/link-cleaner`, `modules/download-inspector`, `modules/session-sweeper`, `modules/site-xray`, `modules/command-palette` | Live browser tests per module; kill switches; honest permission disclosure; see `docs/SPEC_COVERAGE.md` section 5 for per-module status and measured engine limits |
+| FPP canvas pixel-level probe | `tests/axes/probe_canvas_keying.py`, `test_identity_levels.py::test_fpp_canvas_behavior_pixel_level` | Non-loopback origins via `network.dns.localDomains`; raw `getImageData` pixel hashes; proves no default FPP canvas noise on ESR 153.5.1 |
 | Prototype modules | `prototypes/aegis_modules.py` | Reference implementations: LinkCleaner, DownloadInspector, SessionSweeper, SiteXray |
 | SPIKE-005 (surface granularity) | `docs/spikes/SPIKE-005-surface-granularity.md` | Process-tiered hypothesis, approved as working design |
 | SPIKE-006 (launcher/orchestrator) | `docs/spikes/SPIKE-006-launcher-orchestrator.md` | Design only; no implementation |
@@ -116,9 +118,10 @@ Runtime verification on Firefox ESR 153.5.1esr confirmed that compiler and proxy
 
 | Component | Spec Reference | Phase |
 | :--- | :--- | :--- |
-| Launcher / orchestrator (process spawning, IPC, URL hand-off) | SPIKE-006, A-001 | Phase 3 |
+| Launcher / orchestrator (full production implementation) | SPIKE-006, A-001 | Phase 3 (Python MVP in `tools/launcher/`) |
+| Session-sweeper per-origin purge execution | browsingData `origins` is Chrome-only (measured); needs native helper / engine patch / owner decision | Phase 3 |
+| Ctrl+Shift+P real-key precedence check (vs New Private Window) | Manual hardware-key verification; automation cannot reach shortcut dispatch | Open |
 | Tor integration (N2/N3 network axis, circuit isolation) | SPIKE-004, Part 5.4 | Phase 3 |
-| Tier-1 built-in extensions (link-cleaner, download-inspector, session-sweeper, site-xray, command-palette) | Part 5.8, Module Catalog | Phase 2d (in progress) |
 | Engine build from source (patches, JIT overrides) | D-010, BUILD.md | Phase 3 |
 | CSS media query normalization for I4 (color scheme, resolution, pointer) | VERIFY-I-010 | Phase 3 |
 | WebRTC ICE candidate behavioral test (actual candidate inspection) | VERIFY-I-006 | Phase 2d |

@@ -4,11 +4,16 @@ tests/axes/test_identity_levels.py — Runtime verification of Identity levels I
 
 Verifies identity controls against the running Firefox ESR engine:
 - I1: Native baseline (FPP off, RFP off, trimmingPolicy 0, no_host false, gamepad enabled).
-- I3: Site-keyed noise (FPP locked true, remoteOverrides locked false, trimmingPolicy 2, no_host true).
+- I3: FPP baseline (FPP locked true, remoteOverrides locked false, trimmingPolicy 2, no_host true).
+      NOTE: pixel-level testing (test_fpp_canvas_behavior_pixel_level) shows FPP
+      applies NO canvas randomization by default on ESR 153.5.1; I3's name and
+      canvas claims are under owner review (A-002 correction, VERIFY-I-005).
 - I2: Uniform spoofing (RFP locked true, letterboxing true, FPP false, unmeasured resemblance).
-- I4: Minimal-API (RFP locked true, gamepad disabled).
+- I4: Minimal-Signals (RFP locked true, passive non-script signals locked).
 - Fail-Closed: Invalid or mismatched identity tier fails closed to I4 minimal identity.
-- FPP Override: Proves per-target overrides in privacy.fingerprintingProtection.overrides alter behavior.
+- FPP Canvas (pixel-level, non-loopback): locks in the measured facts — no default
+  FPP canvas noise; RFP positive control works; +AllTargets enables per-readback
+  random noise; loopback behaves identically to non-loopback.
 - Cumulativity: Validates I4 >= I2 >= I3 >= I1 along the protection chain.
 """
 
@@ -16,6 +21,7 @@ import ast
 import json
 import os
 import pathlib
+import shutil
 import socket
 import subprocess
 import sys
@@ -482,114 +488,174 @@ class TestIdentityLevels(unittest.TestCase):
             proc.wait()
             subprocess.run(["rm", "-rf", prof_dir])
 
-    def test_fpp_per_target_override_changes_behavior(self):
+    def test_fpp_canvas_behavior_pixel_level(self):
         """
-        Behavioral test: Prove that a per-target override in privacy.fingerprintingProtection.overrides
-        effectively changes the engine's runtime fingerprinting protection behavior.
+        Behavioral test (pixel-level, NON-LOOPBACK origins): characterize FPP
+        canvas behavior on Firefox ESR 153.5.1.
 
-        Baseline (I3, no overrides):
-          fpp_overrides = "" (empty string)
-          EfficientCanvasRandomization target is ACTIVE: produces site-keyed pseudo-random canvas noise.
+        Methodology (supersedes all toDataURL/loopback evidence):
+          - Hostnames a.test / b.test are mapped to 127.0.0.1 via
+            network.dns.localDomains (offline, no external DNS).
+          - The fixture hashes RAW CANVAS PIXELS (SHA-256 of
+            ctx.getImageData(...).data), never PNG strings.
+          - Probe-only prefs: https_first/https_only disabled because the
+            fixture server is plain HTTP and non-loopback hosts would be
+            auto-upgraded otherwise. Does not affect FPP keying.
 
-        Override applied: -CanvasRandomization
-          fpp_overrides = "-CanvasRandomization"
-          EfficientCanvasRandomization target is DISABLED: produces unperturbed deterministic canvas output.
+        Facts this test locks in (full matrix: tests/axes/probe_canvas_keying.py):
+          1. Default I3 (FPP on) applies NO canvas pixel noise: the pixel hash
+             equals the I1 native hash (and is stable across launches).
+          2. RFP (I2) positive control: per-readback random noise. Proves the
+             fixture CAN detect canvas noise (guards against false nulls).
+          3. overrides="+AllTargets" DOES change canvas behavior (hash differs
+             from native): the noise is per-readback random (RFP-like), NOT
+             stable site-keyed noise.
+          4. Loopback (127.0.0.1) and non-loopback (a.test) behave identically
+             under default I3 (no noise in either case).
 
-        Verifies:
-        1. Live pref configuration differs (before='', after='-CanvasRandomization').
-        2. Live behavioral output differs: SHA-256 canvas readback hash with override differs from baseline.
+        Consequence: the prior claim "FPP site-keyed canvas noise" (VERIFY-I-005,
+        A-002) is withdrawn. The earlier toDataURL-based "behavioral" evidence
+        was a session-unique PNG encoding artifact: PNG-string hashes differ
+        across launches while pixel hashes are identical.
         """
         import http.server
         import threading
-        import hashlib
 
-        class CanvasHandler(http.server.SimpleHTTPRequestHandler):
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        from probe_canvas_keying import FIXTURE_HTML  # noqa: E402
+
+        class CanvasHandler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
                 self.send_response(200)
-                self.send_header("Content-Type", "text/html")
+                self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(b"""<!DOCTYPE html>
-<html><body>
-<canvas id="canvas_probe" width="120" height="60"></canvas>
-<script>
-const c = document.getElementById("canvas_probe");
-const ctx = c.getContext("2d");
-ctx.fillStyle = "#ff6600";
-ctx.fillRect(10, 10, 80, 40);
-ctx.fillStyle = "#006699";
-ctx.font = "16px sans-serif";
-ctx.fillText("Aegis Canvas Probe", 15, 35);
-ctx.strokeStyle = "rgba(120, 20, 200, 0.7)";
-ctx.lineWidth = 2;
-ctx.strokeRect(5, 5, 110, 50);
-</script>
-</body></html>""")
+                self.wfile.write(FIXTURE_HTML)
+
+            def do_POST(self):
+                length = int(self.headers.get("Content-Length", "0"))
+                body = json.loads(self.rfile.read(length) or b"{}")
+                CanvasHandler.reports[body.get("tag", "untagged")] = body
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"ok")
 
             def log_message(self, *args):
                 pass
 
-        server = http.server.HTTPServer(("127.0.0.1", 0), CanvasHandler)
-        port_srv = server.server_address[1]
-        srv_thread = threading.Thread(target=server.serve_forever, daemon=True)
-        srv_thread.start()
+        def query_pixel_hash(identity_tier, overrides, host):
+            """Launch ESR, load the fixture on `host`, return the report dict."""
+            CanvasHandler.reports = {}
+            port_srv = find_free_port()
+            server = http.server.HTTPServer(("127.0.0.1", port_srv), CanvasHandler)
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            mar_port = find_free_port()
+            prof_dir = tempfile.mkdtemp(prefix="aegis_fpppix_")
+            try:
+                with open(os.path.join(prof_dir, "user.js"), "w") as f:
+                    f.write(f'user_pref("marionette.enabled", true);\n')
+                    f.write(f'user_pref("marionette.port", {mar_port});\n')
+                    f.write('user_pref("network.dns.localDomains", "a.test,b.test");\n')
+                    f.write('user_pref("dom.security.https_first", false);\n')
+                    f.write('user_pref("dom.security.https_only_mode", false);\n')
+                    f.write('user_pref("aegis.profile.tier", "S1");\n')
+                    f.write(f'user_pref("aegis.profile.identity_tier", "{identity_tier}");\n')
+                    if overrides is not None:
+                        f.write(f'user_pref("privacy.fingerprintingProtection.overrides", "{overrides}");\n')
 
-        probe_url = f"http://127.0.0.1:{port_srv}/"
+                env = dict(os.environ)
+                env["AEGIS_SURFACE_TIER"] = "S1"
+                env["AEGIS_IDENTITY_TIER"] = identity_tier
+                cmd = [
+                    str(ESR_BIN), "-profile", prof_dir, "--no-remote",
+                    "--headless", "--marionette", "--remote-allow-system-access"
+                ]
+                proc = subprocess.Popen(cmd, env=env, stdout=subprocess.DEVNULL,
+                                        stderr=subprocess.DEVNULL)
+                time.sleep(2.5)
+                s = socket.socket()
+                try:
+                    s.connect(("127.0.0.1", mar_port))
+                    header = b""
+                    while b":" not in header:
+                        header += s.recv(1)
+                    s.recv(int(header[:-1].decode()))
+
+                    def sr(msg_id, cmd_name, params):
+                        payload = json.dumps([0, msg_id, cmd_name, params])
+                        s.sendall(f"{len(payload)}:{payload}".encode())
+                        hdr = b""
+                        while b":" not in hdr:
+                            hdr += s.recv(1)
+                        ln = int(hdr[:-1].decode())
+                        body = b""
+                        while len(body) < ln:
+                            body += s.recv(ln - len(body))
+                        return json.loads(body.decode())
+
+                    sr(1, "WebDriver:NewSession", {})
+                    sr(2, "Marionette:SetContext", {"value": "chrome"})
+                    nav = f"""
+                    let win = Services.wm.getMostRecentWindow("navigator:browser");
+                    win.gBrowser.loadURI(Services.io.newURI("http://{host}:{port_srv}/canvas?tag=t"),
+                        {{ triggeringPrincipal:
+                           Services.scriptSecurityManager.getSystemPrincipal() }});
+                    """
+                    sr(3, "WebDriver:ExecuteScript", {"script": nav, "args": []})
+                    deadline = time.time() + 12
+                    while time.time() < deadline and "t" not in CanvasHandler.reports:
+                        time.sleep(0.5)
+                    return CanvasHandler.reports.get("t")
+                finally:
+                    s.close()
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+            finally:
+                server.shutdown()
+                server.server_close()
+                shutil.rmtree(prof_dir, ignore_errors=True)
+
         try:
-            # Control 1: Baseline I3 Run 1
-            res_base1 = self._query_live_identity_tier("I3", overrides="", canvas_probe_url=probe_url)
-            self.assertEqual(res_base1["prefs"]["fpp_overrides"], "",
-                             "Baseline I3 run 1 must have empty fpp_overrides")
-            canvas_base1 = res_base1["content"]["canvas_data"]
-            self.assertIsNotNone(canvas_base1, "Must extract canvas data URL from probe page")
-            hash_base1 = hashlib.sha256(canvas_base1.encode()).hexdigest()
+            # Fact 1: default I3 applies no canvas pixel noise (== I1 native).
+            rep_i3 = query_pixel_hash("I3", "", "a.test")
+            rep_i1 = query_pixel_hash("I1", None, "a.test")
+            self.assertIsNotNone(rep_i3, "I3 probe page must self-report")
+            self.assertIsNotNone(rep_i1, "I1 probe page must self-report")
+            self.assertTrue(rep_i3.get("sha256SelfTestOk"),
+                            "In-page SHA-256 self-test must pass")
+            self.assertEqual(rep_i3["readback1"], rep_i1["readback1"],
+                             "Default I3 (FPP) must NOT alter canvas pixels on "
+                             "ESR 153.5.1 (no canvas randomization in the "
+                             "default FPP target set)")
 
-            # Control 2: Baseline I3 Run 2 (verify cross-launch behavior on same origin)
-            res_base2 = self._query_live_identity_tier("I3", overrides="", canvas_probe_url=probe_url)
-            self.assertEqual(res_base2["prefs"]["fpp_overrides"], "",
-                             "Baseline I3 run 2 must have empty fpp_overrides")
-            canvas_base2 = res_base2["content"]["canvas_data"]
-            self.assertIsNotNone(canvas_base2, "Must extract canvas data URL from probe page")
-            hash_base2 = hashlib.sha256(canvas_base2.encode()).hexdigest()
+            # Fact 2: RFP positive control (proves the probe detects noise).
+            rep_i2 = query_pixel_hash("I2", None, "a.test")
+            self.assertIsNotNone(rep_i2, "I2 probe page must self-report")
+            self.assertNotEqual(rep_i2["readback1"], rep_i1["readback1"],
+                                "RFP must randomize canvas pixels (positive control)")
+            self.assertNotEqual(rep_i2["readback1"], rep_i2["readback2"],
+                                "RFP noise must differ per readback (positive control)")
 
-            # Control 3: I1 Native Baseline
-            res_i1 = self._query_live_identity_tier("I1", overrides=None, canvas_probe_url=probe_url)
-            self.assertIn(res_i1["prefs"]["fpp_overrides"], ("", "NOT_SET"),
-                          "I1 native must have no fpp_overrides configured")
-            canvas_i1 = res_i1["content"]["canvas_data"]
-            self.assertIsNotNone(canvas_i1, "Must extract canvas data URL from I1 probe page")
-            hash_i1 = hashlib.sha256(canvas_i1.encode()).hexdigest()
+            # Fact 3: +AllTargets override changes behavior (per-readback noise).
+            rep_all = query_pixel_hash("I3", "+AllTargets", "a.test")
+            self.assertIsNotNone(rep_all, "+AllTargets probe page must self-report")
+            self.assertNotEqual(rep_all["readback1"], rep_i1["readback1"],
+                                "+AllTargets must alter canvas pixels (override "
+                                "mechanism is behaviorally effective)")
+            self.assertNotEqual(rep_all["readback1"], rep_all["readback2"],
+                                "+AllTargets canvas noise is per-readback random "
+                                "(RFP-like), not stable site-keyed noise")
 
-            # Target Override: I3 with -CanvasRandomization
-            res_override = self._query_live_identity_tier("I3", overrides="-CanvasRandomization", canvas_probe_url=probe_url)
-            self.assertEqual(
-                res_override["prefs"]["fpp_overrides"], "-CanvasRandomization",
-                "Target override must be dynamically configured in running engine"
-            )
-            canvas_over = res_override["content"]["canvas_data"]
-            self.assertIsNotNone(canvas_over, "Must extract canvas data URL with override")
-            hash_over = hashlib.sha256(canvas_over.encode()).hexdigest()
-
-            # Empirical findings & controls check:
-            # 1. Live pref configuration differs (before='', after='-CanvasRandomization')
-            self.assertNotEqual(
-                res_base1["prefs"]["fpp_overrides"],
-                res_override["prefs"]["fpp_overrides"],
-                "Override preference must differ from baseline (before='', after='-CanvasRandomization')"
-            )
-
-            # 2. In Gecko ESR 153 headless, canvas.toDataURL() includes a 16-hex session-unique
-            # debug chunk ('deBG') in the PNG byte stream, causing raw PNG string hashes across
-            # separate process launches to differ. Furthermore, loopback origins (127.0.0.1) are
-            # treated by Gecko as local/test contexts.
-            # Because exact byte behavioral parity (override == I1) cannot be asserted over
-            # loopback traffic, VERIFY-I-002 remains strictly VERIFIED (SET) in docs/VERIFY.md.
-            self.assertIsNotNone(hash_base1)
-            self.assertIsNotNone(hash_base2)
-            self.assertIsNotNone(hash_i1)
-            self.assertIsNotNone(hash_over)
+            # Fact 4: loopback behaves identically to non-loopback under I3.
+            rep_loop = query_pixel_hash("I3", "", "127.0.0.1")
+            self.assertIsNotNone(rep_loop, "loopback probe page must self-report")
+            self.assertEqual(rep_loop["readback1"], rep_i3["readback1"],
+                             "Loopback and non-loopback origins must show the "
+                             "same (absent) FPP canvas noise")
         finally:
-            server.shutdown()
-            server.server_close()
+            pass
 
 
 if __name__ == "__main__":

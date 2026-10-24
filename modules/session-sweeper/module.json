@@ -1,15 +1,17 @@
 {
   "id": "session-sweeper",
   "name": "Session Sweeper",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "privacy_class": "P1",
   "permissions": [
     "browsingData",
     "storage",
-    "alarms"
+    "alarms",
+    "history",
+    "tabs"
   ],
   "kill_switch": true,
   "network": "none",
   "tier": 1,
-  "description": "Periodically and selectively purges stale site browsing data (cookies, storage, cache) older than N days while preserving allow-listed domains."
+  "description": "Opt-in selective purger for stale site data. Data age is computed from the module's own last-interaction ledger (browser.history.onVisited per origin) because browsingData.remove({since}) deletes data NEWER than a timestamp and cannot enumerate per-origin ages. Stale origins are purged per-origin with no since cutoff; never for open tabs or allow-listed domains. First use is opt-in with a deletion preview."
 }

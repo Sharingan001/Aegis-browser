@@ -6,6 +6,29 @@
 **Test Environment:** Offline local test server (`http://127.0.0.1:port/axes/test_fp_surface.html`)  
 **Test Mode:** `--headless` (no window manager)
 
+> [!WARNING]
+> **CORRECTION (2026-10-24, Phase 2d follow-up): the CANVAS rows of this report are INVALID.**
+> Two measurement defects affected every canvas reading collected for this report:
+> 1. **PNG-string artifact:** all canvas evidence used `toDataURL()` strings. In ESR 153,
+>    `toDataURL()` PNG output embeds a session-unique debug chunk, so PNG hashes differ
+>    across launches even when pixels are byte-identical (side-by-side proof in
+>    `tests/axes/probe_canvas_keying.py`: pixel hashes SAME, PNG hashes DIFF).
+> 2. **No default FPP canvas randomization exists to measure:** re-testing with raw
+>    `getImageData` pixel hashes on NON-LOOPBACK origins (`a.test`/`b.test` via
+>    `network.dns.localDomains`) shows default FPP (I3) leaves canvas pixels identical
+>    to I1 native — on loopback and non-loopback alike, in normal and private windows.
+>    `+CanvasRandomization` / `+EfficientCanvasRandomization` overrides have no effect on
+>    this build; only `+AllTargets` enables noise, and that noise is per-readback random
+>    (RFP-like), not stable site-keyed noise.
+> **Superseding evidence:** `tests/axes/probe_canvas_keying.py` (full matrix) and
+> `tests/axes/test_identity_levels.py::test_fpp_canvas_behavior_pixel_level` (regression
+> test). See also the A-002 §0 correction and VERIFY-I-002/I-005 in `docs/VERIFY.md`.
+> **The RFP rows of this report stand** (reconfirmed: RFP applies per-readback random
+> canvas noise — used as the positive control in the new probe).
+> **Loopback clarification:** loopback and non-loopback origins behaved identically in
+> every FPP configuration tested; the loopback-specific concern is superseded by the
+> fact that no default FPP canvas noise exists on this build at all.
+
 > [!IMPORTANT]
 > **Repository is PUBLIC.** All host-specific values (GPU model, CPU core count, timezone,
 > display resolution) are redacted in this report and replaced with `<REDACTED_*>` placeholders.

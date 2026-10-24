@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Aegis Site X-ray",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Passive security posture inspector reviewing HTTP response headers and security attributes.",
   "applications": {
     "gecko": {
@@ -11,7 +11,6 @@
   },
   "permissions": [
     "webRequest",
-    "tabs",
     "storage",
     "<all_urls>"
   ],
@@ -22,5 +21,10 @@
     ],
     "persistent": true
   },
-  "notes": "Permission justification: webRequest (non-blocking) and <all_urls> are required to passively observe response headers (Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options, Set-Cookie flags) across visited websites without modifying or blocking traffic (webRequestBlocking is not requested). tabs is used to associate posture reports with the active tab. storage is used for kill-switch persistence. Operates strictly offline with zero external network communication (Privacy Class P0)."
+  "notes": "Permissions (honest disclosure): webRequest + <all_urls> are BROAD permissions granting read access to response headers of every site (passive, non-blocking onHeadersReceived for main_frame only). This is intentionally NOT least privilege; a narrower scope cannot audit arbitrary visited sites. storage = enabled flag only (Privacy Class P1: local configuration only). The 'tabs' permission is NOT requested: tab lifecycle events work without it and tab URLs are not needed. Header VALUES and Set-Cookie contents (including cookie names) are never stored or logged - only derived booleans, counters, and the origin are kept in memory. Cross-module messaging: externally_connectable is declared for portability but Gecko does NOT enforce it (measured on ESR 153.5.1; the rogue-extension test proves delivery happens). The ENFORCED defense is the background service's sender.id allowlist of Aegis module IDs, which ignores all other senders (verified by a live rogue-extension test). No network egress.",
+  "externally_connectable": {
+    "ids": [
+      "command-palette@aegis.local"
+    ]
+  }
 }
